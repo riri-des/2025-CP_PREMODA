@@ -1,3 +1,1 @@
 # PREMODA: A MOBILE-BASED APPAREL SUITABILITY PREVIEW FOR ONLINE SHOPPERS USING COMPUTER VISION
-
-PREMODA is a Flutter-based Android e-commerce application that integrates CP VTON technology with StyleHub to provide users with AI-powered virtual try-on capabilities for clothing items. The application combines computer vision and generative AI to help online shoppers preview and visualize apparel suitability before making purchase decisions. Built using Flutter/Dart framework, the app leverages advanced image processing algorithms and CP VTON for StyleHub eCommerce App integration to deliver realistic clothing visualization and seamless shopping experience on Android devices.
