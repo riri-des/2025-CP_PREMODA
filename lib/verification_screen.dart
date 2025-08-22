@@ -120,7 +120,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              'We sent a verification code to\\n${widget.email}',
+              'We sent a verification code to\n${widget.email}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.grey[600],
               ),
@@ -204,7 +204,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'Didn\\'t receive the code? ',
+                  'Didn\'t receive the code? ',
                   style: TextStyle(color: Colors.grey[600]),
                 ),
                 TextButton(
