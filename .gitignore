@@ -75,6 +75,16 @@ backend_example/__pycache__/
 **/secrets/
 **/credentials/
 
+# API Keys and Configuration
+lib/services/supabase_config.dart
+lib/services/emailjs_config.dart
+*_config.dart
+*.env
+.env.*
+config/
+secrets.json
+api_keys.json
+
 # Database
 *.db
 *.sqlite

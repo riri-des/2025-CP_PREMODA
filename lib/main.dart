@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'home_screen.dart';
+import 'services/supabase_config.dart';
+import 'services/auth_service.dart';
+import 'verification_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: SupabaseConfig.supabaseUrl,
+    anonKey: SupabaseConfig.supabaseAnonKey,
+  );
+  
   runApp(const PremodaApp());
 }
 
@@ -37,6 +49,139 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  // Form validation
+  String? _validateForm() {
+    if (_nameController.text.trim().isEmpty) {
+      return 'Please enter your name';
+    }
+    if (_nameController.text.trim().length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+    if (_emailController.text.trim().isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!AuthService.isValidEmail(_emailController.text.trim())) {
+      return 'Please enter a valid email address';
+    }
+    if (_passwordController.text.isEmpty) {
+      return 'Please enter a password';
+    }
+    
+    final passwordValidation = AuthService.validatePassword(_passwordController.text);
+    if (!passwordValidation['isValid']) {
+      return passwordValidation['message'];
+    }
+    
+    if (_confirmPasswordController.text.isEmpty) {
+      return 'Please confirm your password';
+    }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      return 'Passwords do not match';
+    }
+    
+    return null; // No errors
+  }
+
+  // Handle sign up
+  Future<void> _handleSignUp() async {
+    final validationError = _validateForm();
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            validationError,
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFF44336),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await AuthService.signUpWithEmailJS(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (result['success']) {
+        if (result['needsVerification'] == true) {
+          // Navigate to verification screen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VerificationScreen(
+                email: result['email'],
+                name: result['name'],
+                password: result['password'],
+              ),
+            ),
+          );
+        } else {
+          // Show success message and navigate to home screen (shouldn't happen with new flow)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message'],
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: const Color(0xFF4CAF50),
+            ),
+          );
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HomeScreen(),
+            ),
+          );
+        }
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'],
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: const Color(0xFFF44336),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'An unexpected error occurred. Please try again.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFF44336),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,13 +343,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       width: double.infinity,
                       height: screenHeight * 0.055,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Navigate to home screen after successful sign up
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const HomeScreen()),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _handleSignUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD4A574), // Brown color from screenshot
                           foregroundColor: Colors.white,
@@ -213,13 +352,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             borderRadius: BorderRadius.circular(25),
                           ),
                         ),
-                        child: Text(
-                          'Sign up',
-                          style: GoogleFonts.poppins(
-                            fontSize: screenWidth * 0.04,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        child: _isLoading
+                          ? SizedBox(
+                              width: screenWidth * 0.05,
+                              height: screenWidth * 0.05,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              'Sign up',
+                              style: GoogleFonts.poppins(
+                                fontSize: screenWidth * 0.04,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                       ),
                     ),
                     
@@ -567,6 +715,105 @@ class _LogInScreenState extends State<LogInScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // Form validation
+  String? _validateForm() {
+    if (_emailController.text.trim().isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!AuthService.isValidEmail(_emailController.text.trim())) {
+      return 'Please enter a valid email address';
+    }
+    if (_passwordController.text.isEmpty) {
+      return 'Please enter your password';
+    }
+    
+    return null; // No errors
+  }
+
+  // Handle login
+  Future<void> _handleLogin() async {
+    final validationError = _validateForm();
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            validationError,
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFF44336),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await AuthService.loginWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (result['success']) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'],
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: const Color(0xFF4CAF50),
+          ),
+        );
+
+        // Navigate to home screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const HomeScreen(),
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'],
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: const Color(0xFFF44336),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'An unexpected error occurred. Please try again.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: const Color(0xFFF44336),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -714,13 +961,7 @@ class _LogInScreenState extends State<LogInScreen> {
                       width: double.infinity,
                       height: screenHeight * 0.055,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Navigate to home screen after successful login
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const HomeScreen()),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFD4A574), // Brown color from screenshot
                           foregroundColor: Colors.white,
@@ -729,13 +970,22 @@ class _LogInScreenState extends State<LogInScreen> {
                             borderRadius: BorderRadius.circular(25),
                           ),
                         ),
-                        child: Text(
-                          'Log in',
-                          style: GoogleFonts.poppins(
-                            fontSize: screenWidth * 0.04,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        child: _isLoading
+                          ? SizedBox(
+                              width: screenWidth * 0.05,
+                              height: screenWidth * 0.05,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              'Log in',
+                              style: GoogleFonts.poppins(
+                                fontSize: screenWidth * 0.04,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                       ),
                     ),
                     

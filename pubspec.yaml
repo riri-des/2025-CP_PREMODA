@@ -45,6 +45,15 @@ dependencies:
   permission_handler: ^11.0.1
   http: ^1.1.0
   http_parser: ^4.0.2
+  
+  # Supabase Dependencies
+  supabase_flutter: ^2.3.4
+  
+  # EmailJS for sending emails
+  emailjs: ^4.0.0
+  
+  # SharedPreferences for local storage
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
