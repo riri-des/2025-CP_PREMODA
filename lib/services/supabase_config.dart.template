@@ -1,0 +1,9 @@
+class SupabaseConfig {
+  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
+  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  
+  // Instructions:
+  // 1. Copy this file to supabase_config.dart
+  // 2. Replace YOUR_SUPABASE_URL with your Supabase project URL
+  // 3. Replace YOUR_SUPABASE_ANON_KEY with your Supabase anonymous key
+}
