@@ -1,0 +1,5 @@
+class SupabaseConfig {
+  // Replace these with your actual Supabase credentials from https://supabase.com
+  static const String supabaseUrl = 'YOUR_SUPABASE_URL'; // e.g., https://xxxxx.supabase.co
+  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY'; // Your public anon key
+}

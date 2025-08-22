@@ -1,0 +1,10 @@
+class EmailJSConfig {
+  // Replace these with your actual EmailJS credentials from https://emailjs.com
+  static const String serviceId = 'YOUR_SERVICE_ID'; // Your Gmail service ID
+  static const String templateId = 'YOUR_TEMPLATE_ID'; // Your verification template ID
+  static const String resetTemplateId = 'YOUR_RESET_TEMPLATE_ID'; // Password reset template ID
+  static const String publicKey = 'YOUR_PUBLIC_KEY'; // Get from Account > API Keys
+  
+  // Optional: Private key for increased security
+  static const String? privateKey = null; // 'YOUR_PRIVATE_KEY'
+}

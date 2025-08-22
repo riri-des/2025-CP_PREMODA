@@ -75,6 +75,10 @@ backend_example/__pycache__/
 **/secrets/
 **/credentials/
 
+# Config files with API keys (create .template versions instead)
+lib/services/emailjs_config.dart
+lib/services/supabase_config.dart
+
 # Database
 *.db
 *.sqlite
