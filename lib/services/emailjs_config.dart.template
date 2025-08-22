@@ -1,0 +1,15 @@
+class EmailJSConfig {
+  static const String serviceId = 'YOUR_SERVICE_ID'; // e.g., 'service_abc123'
+  static const String templateId = 'YOUR_TEMPLATE_ID'; // e.g., 'template_xyz789'
+  static const String publicKey = 'YOUR_PUBLIC_KEY'; // e.g., 'user_123abc456def'
+  
+  // Optional: Private key for increased security
+  static const String? privateKey = null; // 'YOUR_PRIVATE_KEY'
+  
+  // Instructions:
+  // 1. Copy this file to emailjs_config.dart
+  // 2. Replace YOUR_SERVICE_ID with your EmailJS service ID
+  // 3. Replace YOUR_TEMPLATE_ID with your EmailJS template ID
+  // 4. Replace YOUR_PUBLIC_KEY with your EmailJS public key
+  // 5. Optionally add your private key for enhanced security
+}
