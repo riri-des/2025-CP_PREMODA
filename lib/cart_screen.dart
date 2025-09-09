@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'screens/virtual_tryon_camera.dart';
 import 'services/virtual_tryon_service.dart';
+import 'services/cart_service.dart';
 import 'dart:io';
 
 class CartScreen extends StatefulWidget {
@@ -13,48 +14,24 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  List<CartItem> cartItems = [
-    CartItem(
-      id: '1',
-      name: 'Great Women\'s Dress',
-      size: 'M',
-      price: 100.00,
-      quantity: 1,
-      color: const Color(0xFF8B7355),
-      icon: Icons.checkroom_rounded,
-    ),
-    CartItem(
-      id: '2', 
-      name: 'Great Women\'s T-shirt',
-      size: 'S',
-      price: 85.00,
-      quantity: 2,
-      color: const Color(0xFFE8A87C),
-      icon: Icons.woman_rounded,
-    ),
-    CartItem(
-      id: '3',
-      name: 'Great Women\'s T-shirt',
-      size: 'L',
-      price: 85.00,
-      quantity: 1,
-      color: const Color(0xFF2D3748),
-      icon: Icons.woman_rounded,
-    ),
-    CartItem(
-      id: '4',
-      name: 'Classic Polo Shirt',
-      size: 'M',
-      price: 95.00,
-      quantity: 1,
-      color: const Color(0xFF5A6B8C),
-      icon: Icons.man_rounded,
-      imagePath: 'assets/images/polo.png',
-    ),
-  ];
-
-  double get totalPrice {
-    return cartItems.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+  final CartService _cartService = CartService();
+  
+  @override
+  void initState() {
+    super.initState();
+    _cartService.addListener(_onCartChanged);
+  }
+  
+  @override
+  void dispose() {
+    _cartService.removeListener(_onCartChanged);
+    super.dispose();
+  }
+  
+  void _onCartChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -72,14 +49,14 @@ class _CartScreenState extends State<CartScreen> {
             
             // Cart Items
             Expanded(
-              child: cartItems.isEmpty 
+              child: _cartService.cartItems.isEmpty 
                   ? _buildEmptyCart(screenWidth, screenHeight)
                   : ListView.builder(
                       padding: EdgeInsets.all(screenWidth * 0.04),
-                      itemCount: cartItems.length,
+                      itemCount: _cartService.cartItems.length,
                       itemBuilder: (context, index) {
                         return _buildCartItem(
-                          cartItems[index], 
+                          _cartService.cartItems[index], 
                           screenWidth, 
                           screenHeight,
                           index,
@@ -89,7 +66,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
             
             // Bottom Total and Checkout
-            if (cartItems.isNotEmpty) _buildBottomSection(screenWidth, screenHeight),
+            if (_cartService.cartItems.isNotEmpty) _buildBottomSection(screenWidth, screenHeight),
           ],
         ),
       ),
@@ -268,22 +245,22 @@ class _CartScreenState extends State<CartScreen> {
               width: screenWidth * 0.18,
               height: screenWidth * 0.18,
               decoration: BoxDecoration(
-                gradient: item.imagePath == null ? LinearGradient(
+                gradient: item.product.images.isEmpty ? LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    item.color.withValues(alpha: 0.3),
-                    item.color.withValues(alpha: 0.6),
+                    Colors.blue.withValues(alpha: 0.3),
+                    Colors.blue.withValues(alpha: 0.6),
                   ],
                 ) : null,
-                color: item.imagePath != null ? Colors.grey.withValues(alpha: 0.1) : null,
+                color: item.product.images.isNotEmpty ? Colors.grey.withValues(alpha: 0.1) : null,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: item.imagePath != null 
+              child: item.product.images.isNotEmpty 
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      item.imagePath!,
+                    child: Image.network(
+                      item.product.images.first.url,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
@@ -304,7 +281,7 @@ class _CartScreenState extends State<CartScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.name,
+                    item.product.name,
                     style: GoogleFonts.poppins(
                       fontSize: screenWidth * 0.035,
                       fontWeight: FontWeight.w600,
@@ -317,7 +294,7 @@ class _CartScreenState extends State<CartScreen> {
                   SizedBox(height: 4),
                   
                   Text(
-                    'Size: ${item.size}',
+                    'Size: ${item.selectedSize}',
                     style: GoogleFonts.poppins(
                       fontSize: screenWidth * 0.03,
                       fontWeight: FontWeight.w400,
@@ -330,7 +307,7 @@ class _CartScreenState extends State<CartScreen> {
                   Row(
                     children: [
                       Text(
-                        'PHP ${item.price.toStringAsFixed(2)}',
+                        'PHP ${item.product.price.toStringAsFixed(2)}',
                         style: GoogleFonts.poppins(
                           fontSize: screenWidth * 0.032,
                           fontWeight: FontWeight.w700,
@@ -461,7 +438,7 @@ class _CartScreenState extends State<CartScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Subtotal (${cartItems.fold(0, (sum, item) => sum + item.quantity)} items)',
+                        'Subtotal (${_cartService.cartItems.fold(0, (sum, item) => sum + item.quantity)} items)',
                         style: GoogleFonts.poppins(
                           fontSize: screenWidth * 0.032,
                           fontWeight: FontWeight.w500,
@@ -469,7 +446,7 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ),
                       Text(
-                        'PHP ${totalPrice.toStringAsFixed(2)}',
+                        'PHP ${_cartService.totalPrice.toStringAsFixed(2)}',
                         style: GoogleFonts.poppins(
                           fontSize: screenWidth * 0.032,
                           fontWeight: FontWeight.w600,
@@ -521,7 +498,7 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ),
                       Text(
-                        'PHP ${totalPrice.toStringAsFixed(2)}',
+                        'PHP ${_cartService.totalPrice.toStringAsFixed(2)}',
                         style: GoogleFonts.poppins(
                           fontSize: screenWidth * 0.038,
                           fontWeight: FontWeight.w700,
@@ -682,9 +659,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                setState(() {
-                  cartItems.clear();
-                });
+                _cartService.clearCart();
                 Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(
@@ -722,7 +697,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           content: Text(
-            'Total: PHP ${totalPrice.toStringAsFixed(2)}\n\nProceed with your order?',
+            'Total: PHP ${_cartService.totalPrice.toStringAsFixed(2)}\n\nProceed with your order?',
             style: GoogleFonts.poppins(),
           ),
           actions: [
@@ -862,7 +837,7 @@ class _CartScreenState extends State<CartScreen> {
               
               SizedBox(height: 20),
               // Selected Items
-              if (cartItems.where((item) => item.isSelected).isNotEmpty) ...[
+              if (_cartService.cartItems.where((item) => item.isSelected).isNotEmpty) ...[
                 Row(
                   children: [
                     Icon(
@@ -889,21 +864,21 @@ class _CartScreenState extends State<CartScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
-                    children: cartItems
+                    children: _cartService.cartItems
                         .where((item) => item.isSelected)
                         .map((item) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Row(
                                 children: [
                                   Icon(
-                                    item.icon,
-                                    color: item.color,
+                                    Icons.checkroom,
+                                    color: Colors.blue,
                                     size: 16,
                                   ),
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      '${item.name} (Size ${item.size})',
+                                      '${item.product.name} (Size ${item.selectedSize})',
                                       style: GoogleFonts.poppins(
                                         fontSize: 12,
                                         color: Colors.black87,
@@ -1006,11 +981,11 @@ class _CartScreenState extends State<CartScreen> {
   
   void _startVirtualTryOn(String source) async {
     // Get selected items for virtual try-on
-    List<CartItem> selectedItems = cartItems.where((item) => item.isSelected).toList();
+    List<CartItem> selectedItems = _cartService.cartItems.where((item) => item.isSelected).toList();
     
     if (selectedItems.isEmpty) {
       // If no items are selected, use all items
-      selectedItems = cartItems;
+      selectedItems = _cartService.cartItems;
     }
     
     if (source == 'camera') {
@@ -1328,21 +1303,21 @@ class _CartScreenState extends State<CartScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              item.color.withValues(alpha: 0.8),
-              item.color,
+              Colors.blue.withValues(alpha: 0.8),
+              Colors.blue,
             ],
           ),
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: item.color.withValues(alpha: 0.3),
+              color: Colors.blue.withValues(alpha: 0.3),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Icon(
-          item.icon,
+          Icons.checkroom,
           color: Colors.white.withValues(alpha: 0.9),
           size: screenWidth * 0.06,
         ),
@@ -1487,26 +1462,3 @@ class _CartScreenState extends State<CartScreen> {
   }
 }
 
-class CartItem {
-  final String id;
-  final String name;
-  final String size;
-  final double price;
-  int quantity;
-  final Color color;
-  final IconData icon;
-  final String? imagePath;
-  bool isSelected;
-
-  CartItem({
-    required this.id,
-    required this.name,
-    required this.size,
-    required this.price,
-    required this.quantity,
-    required this.color,
-    required this.icon,
-    this.imagePath,
-    this.isSelected = false,
-  });
-}

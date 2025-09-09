@@ -36,15 +36,12 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^6.1.0
   
-  # Virtual Try-On Dependencies
-  google_mlkit_pose_detection: ^0.12.0
+  # Virtual Try-On Dependencies (Segmind API only)
   camera: ^0.10.5
-  image: ^4.1.3
   image_picker: ^1.0.4
   path_provider: ^2.1.1
   permission_handler: ^11.0.1
   http: ^1.1.0
-  http_parser: ^4.0.2
   
   # Supabase Dependencies
   supabase_flutter: ^2.3.4

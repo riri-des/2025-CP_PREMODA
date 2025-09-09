@@ -9,11 +9,20 @@ import 'verification_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: SupabaseConfig.supabaseUrl,
-    anonKey: SupabaseConfig.supabaseAnonKey,
-  );
+  // Initialize Supabase only if properly configured
+  if (SupabaseConfig.isConfigured) {
+    try {
+      await Supabase.initialize(
+        url: SupabaseConfig.supabaseUrl,
+        anonKey: SupabaseConfig.supabaseAnonKey,
+      );
+      print('Supabase initialized successfully');
+    } catch (e) {
+      print('Error initializing Supabase: $e');
+    }
+  } else {
+    print('Supabase configuration is not complete. Please update supabase_config.dart');
+  }
   
   runApp(const PremodaApp());
 }

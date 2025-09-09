@@ -4,7 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/virtual_tryon_service.dart';
-import '../cart_screen.dart';
+import '../services/cart_service.dart';
 
 class VirtualTryOnCamera extends StatefulWidget {
   final List<CartItem> selectedItems;
