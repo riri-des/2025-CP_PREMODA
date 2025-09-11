@@ -1,5 +1,4 @@
-# PREMODA: AI-POWERED VIRTUAL TRY-ON FOR MOBILE E-COMMERCE
-
+# PREMODA: A MOBILE-BASED APPAREL SUITABILITY PREVIEW FOR ONLINE SHOPPERS USING COMPUTER VISION
 ## Overview
 PREMODA is a professional mobile application that revolutionizes online shopping through AI-powered virtual try-on technology. Users can realistically preview how clothing items will look on them before making purchases, reducing returns and improving shopping confidence.
 
