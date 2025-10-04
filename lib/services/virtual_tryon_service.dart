@@ -18,39 +18,74 @@ class VirtualTryOnService {
     'Content-Type': 'application/json',
   };
 
-  /// Process image for virtual try-on using Segmind IDM VTON API
+  // Try-On Diffusion RapidAPI configuration
+  static const String _rapidApiKey = 'b75e64c226msha16712b015a584ep10a98ajsne4c7d3c56848';
+  static const String _rapidApiHost = 'try-on-diffusion.p.rapidapi.com';
+  static const String _rapidApiUrl = 'https://try-on-diffusion.p.rapidapi.com/try-on-file';
+
+  /// Process image for virtual try-on using Try-On Diffusion RapidAPI or Segmind
   Future<String?> processVirtualTryOn({
     required String imagePath,
     required List<CartItem> selectedItems,
+    String? modelImagePath,
+    bool useRapidAPI = true,
   }) async {
     try {
-      print('🚀 Starting Segmind IDM VTON process...');
-      
-      // Process each item through the Segmind API
-      String? currentImagePath = imagePath;
-      
-      for (CartItem item in selectedItems) {
-        print('🔄 Processing item: ${item.product.name}');
+      if (useRapidAPI && modelImagePath != null) {
+        print(' Starting Try-On Diffusion RapidAPI process...');
         
-        // Call the Segmind IDM VTON API for realistic virtual try-on
-        final resultPath = await _callSegmindVTONAPI(
-          personImagePath: currentImagePath!,
-          clothingItem: item,
-        );
+        // Process each item through the RapidAPI
+        String? currentImagePath = modelImagePath;
         
-        if (resultPath != null) {
-          currentImagePath = resultPath;
-          print('✅ Successfully processed: ${item.product.name}');
-        } else {
-          print('❌ Failed to process item: ${item.product.name}');
-          // Return original image if API fails
-          return imagePath;
+        for (CartItem item in selectedItems) {
+          print(' Processing item: ${item.product.name}');
+          
+          // Call the Try-On Diffusion RapidAPI
+          final resultPath = await _callRapidAPITryOn(
+            modelImagePath: currentImagePath!,
+            clothingItem: item,
+          );
+          
+          if (resultPath != null) {
+            currentImagePath = resultPath;
+            print(' Successfully processed: ${item.product.name}');
+          } else {
+            print(' Failed to process item: ${item.product.name}');
+            // Return original image if API fails
+            return modelImagePath;
+          }
         }
+        
+        return currentImagePath;
+      } else {
+        print(' Starting Segmind IDM VTON process...');
+        
+        // Process each item through the Segmind API
+        String? currentImagePath = imagePath;
+        
+        for (CartItem item in selectedItems) {
+          print(' Processing item: ${item.product.name}');
+          
+          // Call the Segmind IDM VTON API for realistic virtual try-on
+          final resultPath = await _callSegmindVTONAPI(
+            personImagePath: currentImagePath!,
+            clothingItem: item,
+          );
+          
+          if (resultPath != null) {
+            currentImagePath = resultPath;
+            print(' Successfully processed: ${item.product.name}');
+          } else {
+            print(' Failed to process item: ${item.product.name}');
+            // Return original image if API fails
+            return imagePath;
+          }
+        }
+        
+        return currentImagePath;
       }
-      
-      return currentImagePath;
     } catch (e) {
-      print('💥 Virtual try-on error: $e');
+      print(' Virtual try-on error: $e');
       return null;
     }
   }
@@ -61,14 +96,14 @@ class VirtualTryOnService {
     required CartItem clothingItem,
   }) async {
     try {
-      print('🌐 Calling Segmind IDM VTON API...');
+      print(' Calling Segmind IDM VTON API...');
       
       // Convert images to base64
       final String personBase64 = await _imageToBase64(personImagePath);
       final String clothingBase64 = await _getClothingImageBase64(clothingItem);
       
       if (clothingBase64.isEmpty) {
-        print('⚠️ No clothing image available for ${clothingItem.product.name}');
+        print(' No clothing image available for ${clothingItem.product.name}');
         return null;
       }
       
@@ -83,7 +118,7 @@ class VirtualTryOnService {
         'seed': 42,
       };
       
-      print('📤 Sending request to Segmind...');
+      print(' Sending request to Segmind...');
       
       // Make API call
       final response = await http.post(
@@ -92,7 +127,7 @@ class VirtualTryOnService {
         body: json.encode(requestBody),
       );
       
-      print('📥 Response status: ${response.statusCode}');
+      print(' Response status: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         // The response should be the image data directly
@@ -103,14 +138,14 @@ class VirtualTryOnService {
         final File file = File(filePath);
         await file.writeAsBytes(response.bodyBytes);
         
-        print('💾 Saved result to: $filePath');
+        print(' Saved result to: $filePath');
         return filePath;
       } else {
-        print('❌ Segmind API Error: ${response.statusCode} - ${response.body}');
+        print(' Segmind API Error: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
-      print('💥 Segmind API call error: $e');
+      print(' Segmind API call error: $e');
       return null;
     }
   }
@@ -135,7 +170,7 @@ class VirtualTryOnService {
       }
       
       final String imageUrl = clothingItem.product.images.first.url;
-      print('🖼️ Fetching clothing image from: $imageUrl');
+      print(' Fetching clothing image from: $imageUrl');
       
       // Download the image from URL
       final response = await http.get(Uri.parse(imageUrl));
@@ -143,12 +178,87 @@ class VirtualTryOnService {
       if (response.statusCode == 200) {
         return base64Encode(response.bodyBytes);
       } else {
-        print('❌ Failed to download clothing image: ${response.statusCode}');
+        print(' Failed to download clothing image: ${response.statusCode}');
         return '';
       }
     } catch (e) {
-      print('💥 Error getting clothing image: $e');
+      print(' Error getting clothing image: $e');
       return '';
+    }
+  }
+
+  /// Call the Try-On Diffusion RapidAPI for virtual try-on processing
+  Future<String?> _callRapidAPITryOn({
+    required String modelImagePath,
+    required CartItem clothingItem,
+  }) async {
+    try {
+      print(' Calling Try-On Diffusion RapidAPI...');
+      
+      // Get clothing image URL
+      if (clothingItem.product.images.isEmpty) {
+        print(' No clothing image available for ${clothingItem.product.name}');
+        return null;
+      }
+      
+      final String clothingImageUrl = clothingItem.product.images.first.url;
+      
+      // Read model image file
+      final File modelFile = File(modelImagePath);
+      if (!await modelFile.exists()) {
+        print(' Model image file not found: $modelImagePath');
+        return null;
+      }
+      
+      print(' Sending request to RapidAPI...');
+      
+      // Create multipart request
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse(_rapidApiUrl),
+      );
+      
+      // Add headers
+      request.headers.addAll({
+        'x-rapidapi-host': _rapidApiHost,
+        'x-rapidapi-key': _rapidApiKey,
+      });
+      
+      // Add model image file
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'model_image',
+          modelImagePath,
+        ),
+      );
+      
+      // Add clothing image URL as a field
+      request.fields['cloth_image_url'] = clothingImageUrl;
+      
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      
+      print(' Response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        // Save the result image
+        final Directory tempDir = await getTemporaryDirectory();
+        final String fileName = 'rapidapi_tryon_${DateTime.now().millisecondsSinceEpoch}.png';
+        final String filePath = '${tempDir.path}/$fileName';
+        
+        final File file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+        
+        print(' Saved result to: $filePath');
+        return filePath;
+      } else {
+        print(' RapidAPI Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print(' RapidAPI call error: $e');
+      return null;
     }
   }
 }
