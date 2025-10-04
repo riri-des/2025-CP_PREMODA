@@ -801,53 +801,62 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Padding(
       padding: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.03, screenWidth * 0.04, screenWidth * 0.02),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildCategoryTile('Women\'s\nApparel', const Color(0xFFD4A574), Icons.woman_2_rounded, screenWidth, screenHeight),
-          _buildCategoryTile('Men\'s\nOutfit', const Color(0xFFB8956A), Icons.man_2_rounded, screenWidth, screenHeight),
-          _buildCategoryTile('Outfits\nCollection', const Color(0xFFC4956A), Icons.checkroom_rounded, screenWidth, screenHeight),
+          Expanded(
+            flex: 1,
+            child: _buildCategoryTile('Women\'s\nApparel', const Color(0xFFD4A574), Icons.woman_2_rounded, screenWidth, screenHeight),
+          ),
+          SizedBox(width: screenWidth * 0.02),
+          Expanded(
+            flex: 1,
+            child: _buildCategoryTile('Men\'s\nOutfit', const Color(0xFFB8956A), Icons.man_2_rounded, screenWidth, screenHeight),
+          ),
+          SizedBox(width: screenWidth * 0.02),
+          Expanded(
+            flex: 1,
+            child: _buildCategoryTile('Outfits\nCollection', const Color(0xFFC4956A), Icons.checkroom_rounded, screenWidth, screenHeight),
+          ),
         ],
       ),
     );
   }
   
   Widget _buildCategoryTile(String title, Color color, IconData icon, double screenWidth, double screenHeight) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          // Add haptic feedback and navigation here
-        },
-        child: Container(
-          height: screenHeight * 0.12,
-          margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.01),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                color.withValues(alpha: 0.9),
-                color,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
+    return GestureDetector(
+      onTap: () {
+        // Add haptic feedback and navigation here
+      },
+      child: Container(
+        height: screenHeight * 0.12,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withValues(alpha: 0.9),
+              color,
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: Colors.white,
-                size: screenWidth * 0.06,
-              ),
-              SizedBox(height: 6),
-              Text(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: Colors.white,
+              size: screenWidth * 0.06,
+            ),
+            SizedBox(height: 6),
+            Flexible(
+              child: Text(
                 title,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
@@ -856,9 +865,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: Colors.white,
                   height: 1.1,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

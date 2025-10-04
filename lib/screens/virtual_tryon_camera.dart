@@ -370,15 +370,35 @@ class _VirtualTryOnCameraState extends State<VirtualTryOnCamera> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Camera Preview
+            // Camera Preview - Maintain aspect ratio
             if (_isCameraInitialized && _cameraController != null)
               Positioned.fill(
-                child: CameraPreview(_cameraController!),
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _cameraController!.value.previewSize?.height ?? screenWidth,
+                    height: _cameraController!.value.previewSize?.width ?? screenHeight,
+                    child: CameraPreview(_cameraController!),
+                  ),
+                ),
               )
             else
-              const Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFD4A574),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(
+                      color: Color(0xFFD4A574),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Initializing Camera...',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 

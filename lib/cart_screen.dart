@@ -15,6 +15,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   final CartService _cartService = CartService();
+  String _selectedAIModel = 'rapidapi'; // 'rapidapi' or 'segmind'
   
   @override
   void initState() {
@@ -144,22 +145,50 @@ class _CartScreenState extends State<CartScreen> {
               
               SizedBox(width: 8),
               
-              // Virtual Try-On button
+              // Virtual Try-On button - Enhanced
               GestureDetector(
                 onTap: () {
                   _showVirtualTryOnDialog();
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD4A574).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFD4A574),
+                        const Color(0xFFD4A574).withValues(alpha: 0.8),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFD4A574).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: Image.asset(
-                    'assets/images/scan-icon.png',
-                    width: 18,
-                    height: 18,
-                    color: const Color(0xFFD4A574),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/scan-icon.png',
+                        width: 16,
+                        height: 16,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Try On',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -304,94 +333,104 @@ class _CartScreenState extends State<CartScreen> {
                   
                   SizedBox(height: 8),
                   
+                  // Price section - no Try On button
                   Row(
                     children: [
-                      Text(
-                        'PHP ${item.product.price.toStringAsFixed(2)}',
-                        style: GoogleFonts.poppins(
-                          fontSize: screenWidth * 0.032,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFFD4A574),
+                      // Price - Left side with flexible width
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          'PHP ${item.product.price.toStringAsFixed(2)}',
+                          style: GoogleFonts.poppins(
+                            fontSize: screenWidth * 0.032,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFD4A574),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       
-                      Spacer(),
+                      SizedBox(width: 8),
                       
-                      // Quantity Controls
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              if (item.quantity > 1) {
-                                setState(() {
-                                  item.quantity--;
-                                });
-                              }
-                            },
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: item.quantity > 1 
-                                    ? const Color(0xFFD4A574).withValues(alpha: 0.1)
-                                    : Colors.grey.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
+                      // Quantity Controls - Right side with constrained width
+                      SizedBox(
+                        width: 66, // Fixed width to prevent overflow
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (item.quantity > 1) {
+                                  setState(() {
+                                    item.quantity--;
+                                  });
+                                }
+                              },
+                              child: Container(
+                                width: 18,
+                                height: 18,
+                                decoration: BoxDecoration(
                                   color: item.quantity > 1 
-                                      ? const Color(0xFFD4A574).withValues(alpha: 0.3)
-                                      : Colors.grey.withValues(alpha: 0.3),
-                                  width: 1,
+                                      ? const Color(0xFFD4A574).withValues(alpha: 0.1)
+                                      : Colors.grey.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: item.quantity > 1 
+                                        ? const Color(0xFFD4A574).withValues(alpha: 0.3)
+                                        : Colors.grey.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.remove,
+                                  size: 10,
+                                  color: item.quantity > 1 
+                                      ? const Color(0xFFD4A574)
+                                      : Colors.grey.withValues(alpha: 0.5),
                                 ),
                               ),
-                              child: Icon(
-                                Icons.remove,
-                                size: 16,
-                                color: item.quantity > 1 
-                                    ? const Color(0xFFD4A574)
-                                    : Colors.grey.withValues(alpha: 0.5),
-                              ),
                             ),
-                          ),
-                          
-                          Container(
-                            width: 40,
-                            height: 28,
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${item.quantity}',
-                              style: GoogleFonts.poppins(
-                                fontSize: screenWidth * 0.032,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                          
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                item.quantity++;
-                              });
-                            },
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD4A574).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: const Color(0xFFD4A574).withValues(alpha: 0.3),
-                                  width: 1,
+                            
+                            Container(
+                              width: 20,
+                              height: 18,
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${item.quantity}',
+                                style: GoogleFonts.poppins(
+                                  fontSize: screenWidth * 0.024,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
                                 ),
                               ),
-                              child: Icon(
-                                Icons.add,
-                                size: 16,
-                                color: const Color(0xFFD4A574),
+                            ),
+                            
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  item.quantity++;
+                                });
+                              },
+                              child: Container(
+                                width: 18,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4A574).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: const Color(0xFFD4A574).withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.add,
+                                  size: 10,
+                                  color: const Color(0xFFD4A574),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -513,42 +552,47 @@ class _CartScreenState extends State<CartScreen> {
             
             SizedBox(height: screenWidth * 0.04),
             
-            // Checkout Button
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () {
-                  _showCheckoutDialog();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFD4A574),
-                  foregroundColor: Colors.white,
-                  elevation: 8,
-                  shadowColor: const Color(0xFFD4A574).withValues(alpha: 0.3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.shopping_bag_rounded,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      'Checkout',
-                      style: GoogleFonts.poppins(
-                        fontSize: screenWidth * 0.04,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _showCheckoutDialog();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD4A574),
+                        foregroundColor: Colors.white,
+                        elevation: 8,
+                        shadowColor: const Color(0xFFD4A574).withValues(alpha: 0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.shopping_bag_rounded,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Checkout',
+                            style: GoogleFonts.poppins(
+                              fontSize: screenWidth * 0.04,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -753,232 +797,410 @@ class _CartScreenState extends State<CartScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFD4A574).withValues(alpha: 0.8),
-                      const Color(0xFFD4A574),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.smart_toy,
-                  color: Colors.white,
-                  size: 20,
-                ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Virtual Try-On',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Feature Description
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFD4A574).withValues(alpha: 0.1),
-                      const Color(0xFFD4A574).withValues(alpha: 0.05),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.smart_toy,
-                      color: const Color(0xFFD4A574),
-                      size: 32,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Try before you buy!',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Upload your photo and see how the selected items look on you using our AI-powered virtual fitting technology.',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              
-              SizedBox(height: 20),
-              // Selected Items
-              if (_cartService.cartItems.where((item) => item.isSelected).isNotEmpty) ...[
-                Row(
-                  children: [
-                    Icon(
-                      Icons.checkroom_outlined,
-                      color: const Color(0xFFD4A574),
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Selected Items:',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F8F8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    children: _cartService.cartItems
-                        .where((item) => item.isSelected)
-                        .map((item) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.checkroom,
-                                    color: Colors.blue,
-                                    size: 16,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      '${item.product.name} (Size ${item.selectedSize})',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ),
-                SizedBox(height: 16),
-              ],
-              
-              // Photo Upload Options
-              Row(
+              title: Row(
                 children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _startVirtualTryOn('camera');
-                      },
-                      icon: Icon(Icons.camera_alt_outlined, size: 18),
-                      label: Text(
-                        'Take Photo',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFFD4A574).withValues(alpha: 0.8),
+                          const Color(0xFFD4A574),
+                        ],
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFFD4A574),
-                        side: BorderSide(
-                          color: const Color(0xFFD4A574),
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.smart_toy,
+                      color: Colors.white,
+                      size: 20,
                     ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _startVirtualTryOn('gallery');
-                      },
-                      icon: Icon(Icons.photo_library_outlined, size: 18),
-                      label: Text(
-                        'Upload Photo',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFD4A574),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+                    child: Text(
+                      'Virtual Try-On',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        color: Colors.black87,
                       ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Selected items horizontal preview
+                    if (_cartService.cartItems.where((i) => i.isSelected).isNotEmpty) ...[
+                SizedBox(
+                  height: 76,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _cartService.cartItems.where((i) => i.isSelected).length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, idx) {
+                      final items = _cartService.cartItems.where((i) => i.isSelected).toList();
+                      final it = items[idx];
+                      return Container(
+                        width: 76,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFD4A574).withOpacity(0.25), width: 1),
+                          color: const Color(0xFFF8F8F8),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: it.product.images.isNotEmpty
+                            ? Image.network(it.product.images.first.url, fit: BoxFit.cover)
+                            : Center(
+                                child: Icon(Icons.checkroom, color: const Color(0xFFD4A574), size: 20),
+                              ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+                    // Feature Description
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFD4A574).withValues(alpha: 0.1),
+                            const Color(0xFFD4A574).withValues(alpha: 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.smart_toy,
+                            color: const Color(0xFFD4A574),
+                            size: 32,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Try before you buy!',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Choose your AI model, then take or upload a photo to see how the items look on you!',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 20),
+                    
+                    // AI Model Selection
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.psychology_outlined,
+                          color: const Color(0xFFD4A574),
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Choose AI Model:',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    
+                    // AI Model Options
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedAIModel = 'rapidapi';
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _selectedAIModel == 'rapidapi'
+                                    ? const Color(0xFFD4A574).withOpacity(0.1)
+                                    : const Color(0xFFF8F8F8),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _selectedAIModel == 'rapidapi'
+                                      ? const Color(0xFFD4A574)
+                                      : Colors.grey.withOpacity(0.3),
+                                  width: _selectedAIModel == 'rapidapi' ? 2 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.auto_awesome,
+                                    color: _selectedAIModel == 'rapidapi'
+                                        ? const Color(0xFFD4A574)
+                                        : Colors.grey,
+                                    size: 24,
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Try-On Diffusion',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: _selectedAIModel == 'rapidapi'
+                                          ? const Color(0xFFD4A574)
+                                          : Colors.black87,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'RapidAPI',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedAIModel = 'segmind';
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _selectedAIModel == 'segmind'
+                                    ? const Color(0xFFD4A574).withOpacity(0.1)
+                                    : const Color(0xFFF8F8F8),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _selectedAIModel == 'segmind'
+                                      ? const Color(0xFFD4A574)
+                                      : Colors.grey.withOpacity(0.3),
+                                  width: _selectedAIModel == 'segmind' ? 2 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.smart_toy_outlined,
+                                    color: _selectedAIModel == 'segmind'
+                                        ? const Color(0xFFD4A574)
+                                        : Colors.grey,
+                                    size: 24,
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'IDM VTON',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: _selectedAIModel == 'segmind'
+                                          ? const Color(0xFFD4A574)
+                                          : Colors.black87,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Segmind',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 20),
+                    // Selected Items
+                    if (_cartService.cartItems.where((item) => item.isSelected).isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.checkroom_outlined,
+                            color: const Color(0xFFD4A574),
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Selected Items:',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F8F8),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: _cartService.cartItems
+                              .where((item) => item.isSelected)
+                              .map((item) => Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 2),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.checkroom,
+                                          color: Colors.blue,
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            '${item.product.name} (Size ${item.selectedSize})',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
+                    
+                    // Photo Upload Options
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _startVirtualTryOn('camera');
+                            },
+                            icon: Icon(Icons.camera_alt_outlined, size: 18),
+                            label: Text(
+                              'Take Photo',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFFD4A574),
+                              side: BorderSide(
+                                color: const Color(0xFFD4A574),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _startVirtualTryOn('gallery');
+                            },
+                            icon: Icon(Icons.photo_library_outlined, size: 18),
+                            label: Text(
+                              'Upload Photo',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4A574),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
   
+
   void _startVirtualTryOn(String source) async {
     // Get selected items for virtual try-on
     List<CartItem> selectedItems = _cartService.cartItems.where((item) => item.isSelected).toList();
@@ -1026,6 +1248,7 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
   
+
   Future<void> _processGalleryImage(String imagePath, List<CartItem> selectedItems) async {
     // Show processing dialog
     showDialog(
@@ -1105,11 +1328,14 @@ class _CartScreenState extends State<CartScreen> {
     );
     
     try {
-      // Process the image using VirtualTryOnService
+      // Process the image using VirtualTryOnService with selected AI model
       final VirtualTryOnService service = VirtualTryOnService();
+      final bool useRapidAPI = _selectedAIModel == 'rapidapi';
       final String? resultPath = await service.processVirtualTryOn(
         imagePath: imagePath,
         selectedItems: selectedItems,
+        modelImagePath: useRapidAPI ? imagePath : null,
+        useRapidAPI: useRapidAPI,
       );
       
       // Close processing dialog
@@ -1223,7 +1449,7 @@ class _CartScreenState extends State<CartScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Virtual try-on completed! Items look great! 👗✨',
+                    'Virtual try-on completed! Items look great!',
                     style: GoogleFonts.poppins(),
                   ),
                   backgroundColor: const Color(0xFFD4A574),
@@ -1430,7 +1656,7 @@ class _CartScreenState extends State<CartScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      'Virtual try-on completed! Items look great on you! 👗✨',
+                      'Virtual try-on completed! Items look great on you!',
                       style: GoogleFonts.poppins(),
                     ),
                     backgroundColor: const Color(0xFFD4A574),
