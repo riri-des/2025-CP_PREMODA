@@ -46,7 +46,6 @@ dependencies:
   # Supabase Dependencies
   supabase_flutter: ^2.3.4
   
-  # EmailJS for sending emails
   emailjs: ^4.0.0
   
   # SharedPreferences for local storage
@@ -58,17 +57,16 @@ dev_dependencies:
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -103,3 +101,18 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+  
+ 
+
+# Configure native splash screen
+# Docs: https://pub.dev/packages/flutter_native_splash
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/images/premoda_logo.png
+  android: true
+  ios: true
+  web: true
+
+  android_12:
+    color: "#FFFFFF"
+    image: assets/images/premoda_logo.png
