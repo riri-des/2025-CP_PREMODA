@@ -80,7 +80,6 @@ class ProductCard extends StatelessWidget {
                             )
                           : null,
                     ),
-                    // If there's no image, show a category icon
                     child: !hasImage
                         ? Center(
                             child: Container(
@@ -114,7 +113,6 @@ class ProductCard extends StatelessWidget {
                         : null,
                   ),
                   
-                  // Sale badge
                   if (product.isOnSale)
                     Positioned(
                       top: 8,
@@ -136,7 +134,6 @@ class ProductCard extends StatelessWidget {
                       ),
                     ),
                   
-                  // Favorite button
                   Positioned(
                     top: 8,
                     right: 8,
@@ -164,7 +161,6 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
                   
-                  // Out of stock overlay
                   if (!product.isInStock)
                     Positioned.fill(
                       child: Container(
@@ -198,7 +194,6 @@ class ProductCard extends StatelessWidget {
               ),
             ),
             
-            // Product details
             Expanded(
               flex: 1,
               child: Padding(
@@ -270,7 +265,6 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // Helper to get color based on category
   Color _getCategoryColor(String category) {
     final lowerCategory = category.toLowerCase();
     if (lowerCategory.contains('women')) return const Color(0xFF8B7355);
@@ -280,10 +274,9 @@ class ProductCard extends StatelessWidget {
     if (lowerCategory.contains('winter')) return const Color(0xFF85CDCA);
     if (lowerCategory.contains('accessory') || lowerCategory.contains('accessories')) return const Color(0xFFE27D60);
     if (lowerCategory.contains('shoe') || lowerCategory.contains('footwear')) return const Color(0xFF41B3A3);
-    return const Color(0xFFD4A574); // Default color
+    return const Color(0xFFD4A574); 
   }
 
-  // Helper to get icon based on category
   IconData _getCategoryIcon(String category) {
     final lowerCategory = category.toLowerCase();
     if (lowerCategory.contains('women')) return Icons.woman_rounded;
@@ -293,6 +286,6 @@ class ProductCard extends StatelessWidget {
     if (lowerCategory.contains('winter')) return Icons.snowing;
     if (lowerCategory.contains('accessory') || lowerCategory.contains('accessories')) return Icons.watch;
     if (lowerCategory.contains('shoe') || lowerCategory.contains('footwear')) return Icons.skateboarding;
-    return Icons.checkroom_rounded; // Default icon
+    return Icons.checkroom_rounded; 
   }
 }

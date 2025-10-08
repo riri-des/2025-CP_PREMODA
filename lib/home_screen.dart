@@ -1856,7 +1856,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Cart icon with badge
+     
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -1865,7 +1865,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: isSelected ? Colors.black87 : Colors.grey.withValues(alpha: 0.6),
                   size: 24,
                 ),
-                // Cart notification bubble
+
                 if (isCartIcon)
                   ListenableBuilder(
                     listenable: CartService(),

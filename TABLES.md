@@ -109,3 +109,5 @@ CREATE TABLE public.virtual_tryons (
   created_by uuid,
   CONSTRAINT virtual_tryons_pkey PRIMARY KEY (id)
 );
+
+... FOR CONTEXT OF DATABASE
