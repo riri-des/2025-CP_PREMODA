@@ -140,21 +140,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 // Header with PREMODA title and search
                 _buildHeader(screenWidth, screenHeight),
-                
                 // Main content with scroll
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       children: [
-                        // Hero section with main image
-                        _buildHeroSection(screenWidth, screenHeight),
+                        // Categories section
+                        _buildCategoriesSection(screenWidth, screenHeight),
                         
-                        // Category tiles
-                        _buildCategorySection(screenWidth, screenHeight),
+                        // Big Sale banner
+                        _buildBigSaleBanner(screenWidth, screenHeight),
                         
-                        // For You section
-                        _buildForYouSection(screenWidth, screenHeight),
+                        // Featured section
+                        _buildFeaturedSection(screenWidth, screenHeight),
                         
                         // Bottom padding to prevent overlap with bottom nav
                         SizedBox(height: 20),
@@ -181,96 +180,195 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   
   Widget _buildHeader(double screenWidth, double screenHeight) {
     return Container(
-      padding: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.06, screenWidth * 0.04, screenWidth * 0.04),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFE8BB8F),
-            Color(0xFFD4A574),
-          ],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x20000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
+      padding: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04),
+      color: const Color(0xFFF8F8F8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // PREMODA title
-          Text(
-            'PREMODA',
-            style: GoogleFonts.poppins(
-              fontSize: screenWidth * 0.065,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: 2.5,
-              shadows: [
-                Shadow(
-                  offset: const Offset(1, 1),
-                  blurRadius: 3,
-                  color: Colors.black.withValues(alpha: 0.2),
+          // Hello and Welcome with cart icon
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hello',
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.035,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  Text(
+                    'Welcome',
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.055,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              // Cart icon with badge
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 2;
+                  });
+                  _pageController.animateToPage(
+                    2,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.shopping_cart_outlined,
+                        color: Colors.black87,
+                        size: 24,
+                      ),
+                    ),
+                    // Cart badge
+                    ListenableBuilder(
+                      listenable: CartService(),
+                      builder: (context, child) {
+                        final cartService = CartService();
+                        if (cartService.itemCount == 0) {
+                          return const SizedBox.shrink();
+                        }
+                        return Positioned(
+                          right: -4,
+                          top: -4,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                            child: Text(
+                              cartService.itemCount > 9 
+                                  ? '9+' 
+                                  : cartService.itemCount.toString(),
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           
-          SizedBox(height: screenHeight * 0.018),
+          SizedBox(height: screenHeight * 0.02),
           
-          // Search bar
+          // Search bar with voice and profile icons
           Container(
-            height: 48,
+            height: 50,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(25),
+              borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 6,
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: TextField(
-              style: GoogleFonts.poppins(
-                fontSize: screenWidth * 0.035,
-                color: Colors.black87,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Search here',
-                hintStyle: GoogleFonts.poppins(
-                  fontSize: screenWidth * 0.035,
-                  color: Colors.grey.withValues(alpha: 0.6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.035,
+                      color: Colors.black87,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: screenWidth * 0.035,
+                        color: Colors.grey[400],
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.grey[600],
+                        size: 22,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
                 ),
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: const Color(0xFFD4A574),
-                  size: 22,
+                // Voice icon
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.mic_none,
+                    color: Colors.grey[600],
+                    size: 22,
+                  ),
                 ),
-                suffixIcon: Icon(
-                  Icons.tune_rounded,
-                  color: Colors.grey.withValues(alpha: 0.5),
-                  size: 20,
+                // Profile icon
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _currentIndex = 3;
+                    });
+                    _pageController.animateToPage(
+                      3,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.person_outline,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.transparent,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
+              ],
             ),
           ),
         ],
@@ -1333,6 +1431,387 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
   
+
+  Widget _buildCategoriesSection(double screenWidth, double screenHeight) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.02),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Categories',
+                style: GoogleFonts.poppins(
+                  fontSize: screenWidth * 0.045,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _currentIndex = 1;
+                  });
+                  _pageController.animateToPage(
+                    1,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      'View All',
+                      style: GoogleFonts.poppins(
+                        fontSize: screenWidth * 0.032,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFD4A574),
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward,
+                      color: const Color(0xFFD4A574),
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: screenHeight * 0.02),
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 5,
+              itemBuilder: (context, index) {
+                final categories = [
+                  {'name': 'Fashion', 'icon': Icons.checkroom_rounded, 'color': const Color(0xFFE8A87C)},
+                  {'name': 'Beauty', 'icon': Icons.face_rounded, 'color': const Color(0xFFD4A574)},
+                  {'name': "Men's", 'icon': Icons.man_rounded, 'color': const Color(0xFFB8956A)},
+                  {'name': "Women's", 'icon': Icons.woman_rounded, 'color': const Color(0xFF8B7355)},
+                  {'name': 'Kids', 'icon': Icons.child_care_rounded, 'color': const Color(0xFFC4956A)},
+                ];
+                final category = categories[index];
+                return Container(
+                  margin: EdgeInsets.only(right: screenWidth * 0.04),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              (category['color'] as Color).withOpacity(0.8),
+                              category['color'] as Color,
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (category['color'] as Color).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          category['icon'] as IconData,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        category['name'] as String,
+                        style: GoogleFonts.poppins(
+                          fontSize: screenWidth * 0.028,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBigSaleBanner(double screenWidth, double screenHeight) {
+    return Container(
+      height: screenHeight * 0.22,
+      margin: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.02),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFFFF9800),
+                    const Color(0xFFFF6F00),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              right: -30,
+              top: -30,
+              child: Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 40,
+              bottom: -40,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(screenWidth * 0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Big Sale',
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.065,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Up to 50% Discount',
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.038,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.95),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: List.generate(5, (index) {
+                      return Container(
+                        width: index == 0 ? 20 : 6,
+                        height: 6,
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: index == 0 ? Colors.white : Colors.white.withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              top: 0,
+              child: FutureBuilder<List<Product>>(
+                future: ProductService().getFeaturedProducts(limit: 1),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data!.isNotEmpty && snapshot.data![0].images.isNotEmpty) {
+                    return Container(
+                      width: screenWidth * 0.35,
+                      decoration: BoxDecoration(
+                        image: DecorationImage(
+                          image: NetworkImage(snapshot.data![0].primaryImage),
+                          fit: BoxFit.cover,
+                          alignment: Alignment.centerRight,
+                        ),
+                      ),
+                    );
+                  }
+                  return Container(
+                    width: screenWidth * 0.35,
+                    child: Icon(
+                      Icons.shopping_bag,
+                      size: 80,
+                      color: Colors.white.withOpacity(0.3),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedSection(double screenWidth, double screenHeight) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.02),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Featured',
+                style: GoogleFonts.poppins(
+                  fontSize: screenWidth * 0.045,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {},
+                child: Row(
+                  children: [
+                    Text(
+                      'View All',
+                      style: GoogleFonts.poppins(
+                        fontSize: screenWidth * 0.032,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFD4A574),
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward,
+                      color: const Color(0xFFD4A574),
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: screenHeight * 0.32,
+          child: FutureBuilder<List<Product>>(
+            future: ProductService().getFeaturedProducts(limit: 8),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                  itemCount: 3,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      width: screenWidth * 0.38,
+                      margin: EdgeInsets.only(right: screenWidth * 0.03),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFD4A574),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+              
+              if (snapshot.hasError) {
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.grey, size: 40),
+                        SizedBox(height: 8),
+                        Text('Unable to load products', style: GoogleFonts.poppins(color: Colors.grey, fontSize: screenWidth * 0.035)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              
+              final products = snapshot.data ?? [];
+              
+              if (products.isEmpty) {
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, color: Colors.grey, size: 40),
+                        SizedBox(height: 8),
+                        Text('No featured products', style: GoogleFonts.poppins(color: Colors.grey, fontSize: screenWidth * 0.035)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  return Container(
+                    margin: EdgeInsets.only(right: index < products.length - 1 ? screenWidth * 0.03 : 0),
+                    child: ProductCard(
+                      product: product,
+                      width: screenWidth * 0.38,
+                      height: screenHeight * 0.32,
+                      onTap: () {
+                        ProductService().incrementProductViews(product.id);
+                      },
+                      onAddToCart: () {
+                        _addToCart(product);
+                      },
+                      onFavoriteToggle: () {
+                        _toggleFavorite(product);
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBottomNavigationBar(double screenWidth) {
     return Container(
       height: 70,
