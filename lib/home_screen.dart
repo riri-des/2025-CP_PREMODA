@@ -1485,14 +1485,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             height: 100,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: 5,
+              itemCount: 6,
               itemBuilder: (context, index) {
                 final categories = [
-                  {'name': 'Fashion', 'icon': Icons.checkroom_rounded, 'color': const Color(0xFFE8A87C)},
-                  {'name': 'Beauty', 'icon': Icons.face_rounded, 'color': const Color(0xFFD4A574)},
-                  {'name': "Men's", 'icon': Icons.man_rounded, 'color': const Color(0xFFB8956A)},
-                  {'name': "Women's", 'icon': Icons.woman_rounded, 'color': const Color(0xFF8B7355)},
-                  {'name': 'Kids', 'icon': Icons.child_care_rounded, 'color': const Color(0xFFC4956A)},
+                  {'name': "Men's Top", 'icon': Icons.man_rounded, 'color': const Color(0xFFB8956A)},
+                  {'name': "Men's Bottom", 'icon': Icons.man_rounded, 'color': const Color(0xFFE8A87C)},
+                  {'name': "Women's Top", 'icon': Icons.woman_rounded, 'color': const Color(0xFF8B7355)},
+                  {'name': "Women's Bottom", 'icon': Icons.woman_rounded, 'color': const Color(0xFFC4956A)},
+                  {'name': "Kid's Top", 'icon': Icons.child_care_rounded, 'color': const Color(0xFFD4A574)},
+                  {'name': "Kid's Bottom", 'icon': Icons.child_care_rounded, 'color': const Color(0xFFD0A06A)},
                 ];
                 final category = categories[index];
                 return Container(
@@ -1554,7 +1555,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
+            color: const Color(0xFFD4A574).withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -1570,8 +1571,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFFFF9800),
-                    const Color(0xFFFF6F00),
+                    const Color(0xFFD4A574),
+                    const Color(0xFFB8956A),
                   ],
                 ),
               ),

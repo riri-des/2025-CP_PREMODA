@@ -8,10 +8,12 @@ import '../services/cart_service.dart';
 
 class VirtualTryOnCamera extends StatefulWidget {
   final List<CartItem> selectedItems;
+  final bool useRapidAPI; // true => RapidAPI, false => Segmind
   
   const VirtualTryOnCamera({
     super.key,
     required this.selectedItems,
+    required this.useRapidAPI,
   });
 
   @override
@@ -109,8 +111,10 @@ class _VirtualTryOnCameraState extends State<VirtualTryOnCamera> {
       final VirtualTryOnService service = VirtualTryOnService();
       
       final String? resultPath = await service.processVirtualTryOn(
-        imagePath: imagePath,
+        imagePath: imagePath,                 // used by Segmind path
         selectedItems: widget.selectedItems,
+        modelImagePath: widget.useRapidAPI ? imagePath : null, // avatar_image only when RapidAPI
+        useRapidAPI: widget.useRapidAPI,
       );
 
       if (resultPath != null && mounted) {

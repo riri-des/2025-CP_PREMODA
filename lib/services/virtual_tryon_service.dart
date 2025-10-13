@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'cart_service.dart';
 
 class VirtualTryOnService {
@@ -11,7 +12,7 @@ class VirtualTryOnService {
   VirtualTryOnService._internal();
 
   // Segmind IDM VTON API configuration
-  static const String _segmindApiKey = 'SG_81022f8ae44da459';
+  static const String _segmindApiKey = 'SG_aff45d4351404687';
   static const String _segmindBaseUrl = 'https://api.segmind.com/v1/idm-vton';
   static const Map<String, String> _segmindHeaders = {
     'x-api-key': _segmindApiKey,
@@ -112,10 +113,15 @@ class VirtualTryOnService {
         'human_img': personBase64,
         'garm_img': clothingBase64,
         'garment_des': clothingItem.product.description ?? clothingItem.product.name,
-        'is_checked': true,
-        'is_checked_crop': false,
-        'denoise_steps': 30,
+        // IDM-VTON params per Segmind docs
+        'crop': true, // use cropping if needed (3:4 check)
         'seed': 42,
+        'steps': 30,
+        'category': _mapSegmindCategory(clothingItem.product.category),
+        // DressCode version only for dresses per docs
+        'force_dc': _mapSegmindCategory(clothingItem.product.category) == 'dresses',
+        // ensure we want the composed image, not only mask
+        'mask_only': false,
       };
       
       print(' Sending request to Segmind...');
@@ -148,6 +154,25 @@ class VirtualTryOnService {
       print(' Segmind API call error: $e');
       return null;
     }
+  }
+
+  /// Map local product categories to Segmind IDM-VTON expected enum
+  /// Defaults to 'upper_body'. Possible values include 'upper_body', 'lower_body', 'dresses'.
+  String _mapSegmindCategory(String rawCategory) {
+    final c = rawCategory.toLowerCase();
+    // Dresses
+    if (c.contains('dress')) return 'dresses';
+    // Lower body
+    if (c.contains('pants') ||
+        c.contains('trousers') ||
+        c.contains('jeans') ||
+        c.contains('shorts') ||
+        c.contains('skirt') ||
+        c.contains('bottom')) {
+      return 'lower_body';
+    }
+    // Default to upper body for shirts, tees, tops, hoodies, jackets, coats, etc.
+    return 'upper_body';
   }
   
   /// Convert image file to base64 string
@@ -194,62 +219,90 @@ class VirtualTryOnService {
   }) async {
     try {
       print(' Calling Try-On Diffusion RapidAPI...');
-      
-      // Get clothing image URL
-      if (clothingItem.product.images.isEmpty) {
-        print(' No clothing image available for ${clothingItem.product.name}');
-        return null;
-      }
-      
-      final String clothingImageUrl = clothingItem.product.images.first.url;
-      
-      // Read model image file
+
+      // Verify avatar/person image exists (to be sent as 'avatar_image')
       final File modelFile = File(modelImagePath);
       if (!await modelFile.exists()) {
         print(' Model image file not found: $modelImagePath');
         return null;
       }
-      
+
+      // Ensure we have a clothing image; download and save to temp to send as file
+      if (clothingItem.product.images.isEmpty) {
+        print(' No clothing image available for ${clothingItem.product.name}');
+        return null;
+      }
+
+      final String clothingImageUrl = clothingItem.product.images.first.url;
+      print(' Downloading clothing image for upload: $clothingImageUrl');
+      final clothingResp = await http.get(Uri.parse(clothingImageUrl));
+      if (clothingResp.statusCode != 200) {
+        print(' Failed to download clothing image: ${clothingResp.statusCode}');
+        return null;
+      }
+      // Determine clothing content type and extension
+      final clothingCtHeader = clothingResp.headers['content-type'] ?? '';
+      String clothingSubtype;
+      if (clothingCtHeader.contains('image/')) {
+        clothingSubtype = clothingCtHeader.split('/').last;
+      } else if (clothingImageUrl.toLowerCase().endsWith('.png')) {
+        clothingSubtype = 'png';
+      } else if (clothingImageUrl.toLowerCase().endsWith('.jpg') || clothingImageUrl.toLowerCase().endsWith('.jpeg')) {
+        clothingSubtype = 'jpeg';
+      } else if (clothingImageUrl.toLowerCase().endsWith('.webp')) {
+        clothingSubtype = 'webp';
+      } else {
+        clothingSubtype = 'jpeg';
+      }
+
       print(' Sending request to RapidAPI...');
-      
-      // Create multipart request
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse(_rapidApiUrl),
-      );
-      
-      // Add headers
+
+      // Create multipart request to /try-on-file
+      var request = http.MultipartRequest('POST', Uri.parse(_rapidApiUrl));
+
+      // Headers
       request.headers.addAll({
         'x-rapidapi-host': _rapidApiHost,
         'x-rapidapi-key': _rapidApiKey,
       });
-      
-      // Add model image file
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'model_image',
-          modelImagePath,
-        ),
-      );
-      
-      // Add clothing image URL as a field
-      request.fields['cloth_image_url'] = clothingImageUrl;
-      
-      // Send request
+
+      // Files
+      final avatarFile = File(modelImagePath);
+      final avatarBytes = await avatarFile.readAsBytes();
+      final lower = modelImagePath.toLowerCase();
+      String avatarSubtype;
+      if (lower.endsWith('.png')) {
+        avatarSubtype = 'png';
+      } else if (lower.endsWith('.webp')) {
+        avatarSubtype = 'webp';
+      } else {
+        avatarSubtype = 'jpeg';
+      }
+      request.files.add(http.MultipartFile.fromBytes(
+        'avatar_image',
+        avatarBytes,
+        filename: 'avatar.${avatarSubtype}',
+        contentType: MediaType('image', avatarSubtype),
+      ));
+
+      request.files.add(http.MultipartFile.fromBytes(
+        'clothing_image',
+        clothingResp.bodyBytes,
+        filename: 'clothing.${clothingSubtype}',
+        contentType: MediaType('image', clothingSubtype),
+      ));
+
+      // Send
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
       print(' Response status: ${response.statusCode}');
-      
+
       if (response.statusCode == 200) {
-        // Save the result image
-        final Directory tempDir = await getTemporaryDirectory();
         final String fileName = 'rapidapi_tryon_${DateTime.now().millisecondsSinceEpoch}.png';
+        final Directory tempDir = await getTemporaryDirectory();
         final String filePath = '${tempDir.path}/$fileName';
-        
-        final File file = File(filePath);
-        await file.writeAsBytes(response.bodyBytes);
-        
+        final File outFile = File(filePath);
+        await outFile.writeAsBytes(response.bodyBytes);
         print(' Saved result to: $filePath');
         return filePath;
       } else {
