@@ -5,6 +5,7 @@ import 'screens/virtual_tryon_camera.dart';
 import 'services/virtual_tryon_service.dart';
 import 'services/cart_service.dart';
 import 'dart:io';
+import 'home_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -15,7 +16,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   final CartService _cartService = CartService();
-  String _selectedAIModel = 'rapidapi'; // 'rapidapi' or 'segmind'
+  String _selectedAIModel = 'segmind'; // 'rapidapi' or 'segmind'
   
   @override
   void initState() {
@@ -645,7 +646,13 @@ class _CartScreenState extends State<CartScreen> {
           
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              // Navigate to HomeScreen (Shop tab) instead of popping,
+              // to avoid returning to a login or previous unrelated route.
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => const HomeScreen(),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFD4A574),
@@ -1217,6 +1224,7 @@ class _CartScreenState extends State<CartScreen> {
         MaterialPageRoute(
           builder: (context) => VirtualTryOnCamera(
             selectedItems: selectedItems,
+            useRapidAPI: _selectedAIModel == 'rapidapi',
           ),
         ),
       );
