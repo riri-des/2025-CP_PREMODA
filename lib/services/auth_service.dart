@@ -1,6 +1,4 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'emailjs_service.dart';
 
 class AuthService {
   static final _client = Supabase.instance.client;
@@ -80,6 +78,25 @@ class AuthService {
       );
 
       if (response.user != null) {
+        // Backfill users table if missing
+        try {
+          final userId = response.user!.id;
+          final existing = await _client
+              .from('users')
+              .select('id')
+              .eq('id', userId)
+              .maybeSingle();
+          if (existing == null) {
+            await _syncUserToTable(
+              userId: userId,
+              name: (response.user!.userMetadata?['name'] as String?)?.trim() ?? '',
+              email: (response.user!.email ?? '').toLowerCase().trim(),
+              provider: (response.user!.appMetadata?['provider'] as String?) ?? 'email',
+            );
+          }
+        } catch (e) {
+          // Ignore backfill errors; user can still proceed
+        }
         return {
           'success': true,
           'message': 'Login successful!',
@@ -421,87 +438,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    try {
-      // First create the user in Supabase without email confirmation
-      final AuthResponse response = await _client.auth.signUp(
-        email: email.toLowerCase().trim(),
-        password: password,
-        data: {
-          'name': name.trim(),
-          'provider': 'email',
-        },
-        emailRedirectTo: null, // Disable automatic email
-      );
-
-      if (response.user != null) {
-        // Generate custom OTP
-        final otpCode = EmailJSService.generateOTP();
-        
-        // Store OTP temporarily in SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('otp_${email.toLowerCase().trim()}', otpCode);
-        await prefs.setString('otp_name_${email.toLowerCase().trim()}', name.trim());
-        await prefs.setString('otp_password_${email.toLowerCase().trim()}', password);
-        await prefs.setInt('otp_timestamp_${email.toLowerCase().trim()}', DateTime.now().millisecondsSinceEpoch);
-        
-        // Send email using EmailJS
-        final emailResult = await EmailJSService.sendVerificationEmail(
-          toEmail: email.toLowerCase().trim(),
-          userName: name.trim(),
-          otpCode: otpCode,
-        );
-        
-        if (emailResult['success']) {
-          return {
-            'success': true,
-            'message': 'Verification code sent to your email!',
-            'needsVerification': true,
-            'email': email.toLowerCase().trim(),
-            'name': name.trim(),
-            'password': password,
-          };
-        } else {
-          return {
-            'success': false,
-            'message': emailResult['message'],
-            'needsVerification': false,
-          };
-        }
-      } else {
-        return {
-          'success': false,
-          'message': 'Failed to create account. Please try again.',
-          'needsVerification': false,
-        };
-      }
-
-    } on AuthException catch (error) {
-      String message;
-      switch (error.message) {
-        case 'User already registered':
-          message = 'An account with this email already exists';
-          break;
-        case 'Password should be at least 6 characters':
-          message = 'Password must be at least 6 characters long';
-          break;
-        case 'Invalid email':
-          message = 'Please enter a valid email address';
-          break;
-        default:
-          message = error.message ?? 'Failed to create account';
-      }
-      return {
-        'success': false,
-        'message': message,
-        'needsVerification': false,
-      };
-    } catch (error) {
-      return {
-        'success': false,
-        'message': 'An unexpected error occurred: ${error.toString()}',
-        'needsVerification': false,
-      };
-    }
+    // Redirect legacy method to Supabase-native flow
+    return await signUpWithEmail(name: name, email: email, password: password);
   }
 
   // Verify EmailJS OTP and complete user setup
@@ -511,126 +449,17 @@ class AuthService {
     required String name,
     String? password,
   }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedOtp = prefs.getString('otp_${email.toLowerCase().trim()}');
-      final storedTimestamp = prefs.getInt('otp_timestamp_${email.toLowerCase().trim()}');
-      
-      if (storedOtp == null || storedTimestamp == null) {
-        return {
-          'success': false,
-          'message': 'Verification code has expired. Please request a new one.'
-        };
-      }
-      
-      // Check if OTP is expired (10 minutes)
-      final now = DateTime.now().millisecondsSinceEpoch;
-      if (now - storedTimestamp > 600000) { // 10 minutes in milliseconds
-        // Clean up expired OTP
-        await _cleanupOTPData(email.toLowerCase().trim());
-        return {
-          'success': false,
-          'message': 'Verification code has expired. Please request a new one.'
-        };
-      }
-      
-      // Verify OTP
-      if (token != storedOtp) {
-        return {
-          'success': false,
-          'message': 'Invalid verification code. Please check and try again.'
-        };
-      }
-      
-      // OTP is valid, now confirm the user manually
-      // Since we can't directly confirm via Supabase without the email link,
-      // we'll sign them in and consider them verified
-      final AuthResponse response = await _client.auth.signInWithPassword(
-        email: email.toLowerCase().trim(),
-        password: password ?? prefs.getString('otp_password_${email.toLowerCase().trim()}') ?? '',
-      );
-      
-      if (response.user != null && response.session != null) {
-        // Clean up OTP data
-        await _cleanupOTPData(email.toLowerCase().trim());
-        
-        // Sync user to table
-        try {
-          await _syncUserToTable(
-            userId: response.user!.id,
-            name: name.trim(),
-            email: email.toLowerCase().trim(),
-            provider: 'email',
-          );
-        } catch (e) {
-          print('Warning: Failed to sync user to table: $e');
-        }
-        
-        return {
-          'success': true,
-          'message': 'Email verified successfully!',
-          'user': response.user,
-          'session': response.session,
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Failed to verify email. Please try again.'
-        };
-      }
-      
-    } catch (error) {
-      return {
-        'success': false,
-        'message': 'Failed to verify email: ${error.toString()}'
-      };
-    }
+    // Redirect legacy method to Supabase-native flow
+    return await verifyEmail(email: email, token: token, name: name, password: password);
   }
   
   // Resend EmailJS verification
   static Future<Map<String, dynamic>> resendVerificationEmailJS(String email) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final storedName = prefs.getString('otp_name_${email.toLowerCase().trim()}');
-      
-      if (storedName == null) {
-        return {
-          'success': false,
-          'message': 'Please start the signup process again.'
-        };
-      }
-      
-      // Generate new OTP
-      final otpCode = EmailJSService.generateOTP();
-      
-      // Update stored OTP
-      await prefs.setString('otp_${email.toLowerCase().trim()}', otpCode);
-      await prefs.setInt('otp_timestamp_${email.toLowerCase().trim()}', DateTime.now().millisecondsSinceEpoch);
-      
-      // Send email using EmailJS
-      final emailResult = await EmailJSService.sendVerificationEmail(
-        toEmail: email.toLowerCase().trim(),
-        userName: storedName,
-        otpCode: otpCode,
-      );
-      
-      return emailResult;
-    } catch (error) {
-      return {
-        'success': false,
-        'message': 'Failed to resend verification code: ${error.toString()}'
-      };
-    }
+    // Redirect legacy method to Supabase-native flow
+    return await resendVerification(email);
   }
   
-  // Helper method to cleanup OTP data
-  static Future<void> _cleanupOTPData(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('otp_$email');
-    await prefs.remove('otp_name_$email');
-    await prefs.remove('otp_password_$email');
-    await prefs.remove('otp_timestamp_$email');
-  }
+  // No-op: legacy EmailJS client-side OTP cleanup removed
 
   // Private helper method to sync user data to custom users table
   static Future<void> _syncUserToTable({
@@ -640,14 +469,15 @@ class AuthService {
     required String provider,
   }) async {
     try {
-      await _client.from('users').insert({
+      await _client.from('users').upsert({
         'id': userId,
         'name': name,
         'email': email,
         'provider': provider,
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+        // Optional columns in your schema; if they exist and are nullable, they will be set to null
+        'avatar_url': null,
+        'password_hash': null,
+      }, onConflict: 'id');
     } catch (e) {
       // Re-throw the error so it can be handled by the calling method
       throw Exception('Failed to sync user to table: $e');

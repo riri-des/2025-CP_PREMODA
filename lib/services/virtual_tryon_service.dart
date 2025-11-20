@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'cart_service.dart';
+import 'supabase_cart_service.dart';
 
 class VirtualTryOnService {
   static final VirtualTryOnService _instance = VirtualTryOnService._internal();

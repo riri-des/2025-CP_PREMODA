@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'services/product_service.dart';
-import 'services/cart_service.dart';
+import 'services/supabase_cart_service.dart';
 import 'models/product_model.dart';
+import 'widgets/product_card.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -18,11 +19,59 @@ class _CategoryScreenState extends State<CategoryScreen> {
   final ProductService _productService = ProductService();
   List<Product> _products = [];
   bool _isLoading = false;
+  List<String> _availableCategories = [];
   
   @override
   void initState() {
     super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      final cats = await _productService.getCategories();
+      setState(() {
+        _availableCategories = cats;
+      });
+    } catch (_) {}
     _loadProducts();
+  }
+
+  Widget _modalImagePlaceholder(double screenWidth) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFD4A574).withValues(alpha: 0.25),
+            const Color(0xFFD4A574).withValues(alpha: 0.45),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: screenWidth * 0.2,
+          height: screenWidth * 0.2,
+          decoration: BoxDecoration(
+            color: const Color(0xFFD4A574),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.checkroom_rounded,
+            color: Colors.white,
+            size: screenWidth * 0.12,
+          ),
+        ),
+      ),
+    );
   }
 
   void _loadProducts() async {
@@ -31,25 +80,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
     });
 
     try {
-      // Map category index to category names as they appear in database
-      String categoryName;
-      switch (_selectedCategoryIndex) {
-        case 0:
-          categoryName = 'Clothing'; // You can adjust this based on actual data
-          break;
-        case 1:
-          categoryName = 'Clothing'; // For now, all products are in 'Clothing'
-          break;
-        case 2:
-          categoryName = 'Clothing';
-          break;
-        default:
-          categoryName = 'Clothing';
-      }
+      // Resolve selected tab to an exact category present in DB if possible
+      final String token = _selectedCategoryIndex == 0
+          ? 'women'
+          : _selectedCategoryIndex == 1
+              ? 'men'
+              : 'kid';
 
-      // For now, get all products since we only have one product in the database
-      // Later you can filter by actual category when you have more data
-      final products = await _productService.getProducts(limit: 20);
+      String resolvedCategory = _resolveExactCategory(token);
+
+      // Fetch filtered products by resolved category
+      final products = await _productService.getProducts(
+        category: resolvedCategory.isNotEmpty ? resolvedCategory : token,
+        limit: 20,
+      );
       
       setState(() {
         _products = products;
@@ -61,6 +105,26 @@ class _CategoryScreenState extends State<CategoryScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  String _resolveExactCategory(String token) {
+    if (_availableCategories.isEmpty) return '';
+    final lowerToken = token.toLowerCase();
+    String? match = _availableCategories.firstWhere(
+      (c) {
+        final lc = (c ?? '').toString().toLowerCase();
+        if (lowerToken == 'women') {
+          return lc.contains('women') || lc.contains('woman') || lc.contains('lady') || lc.contains('female');
+        } else if (lowerToken == 'men') {
+          // ensure it doesn't contain women
+          return (lc.startsWith('men') || lc.contains("men'") || lc.contains('mens') || lc.contains('male')) && !lc.contains('wom');
+        } else {
+          return lc.contains('kid') || lc.contains('child');
+        }
+      },
+      orElse: () => '',
+    );
+    return match ?? '';
   }
 
   @override
@@ -85,8 +149,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    // Category title
-                    _buildCategoryHeader(screenWidth, screenHeight),
+                    // Category title removed as requested
+                    // Promo banner
+                    _buildPromoBanner(screenWidth),
+                    // Sort & Filter bar
+                    _buildSortFilterBar(screenWidth),
                     
                     // Product grid
                     _buildProductGrid(screenWidth, screenHeight),
@@ -379,300 +446,201 @@ class _CategoryScreenState extends State<CategoryScreen> {
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.75,
+          childAspectRatio: 0.72,
           crossAxisSpacing: 12,
           mainAxisSpacing: 16,
         ),
         itemCount: _products.length,
         itemBuilder: (context, index) {
           final product = _products[index];
-          return _buildRealProductCard(product, screenWidth, screenHeight);
+          return ProductCard(
+            product: product,
+            width: double.infinity,
+            height: double.infinity,
+            onTap: () => _showProductDetailModal(product),
+            onAddToCart: () async {
+              final cartService = SupabaseCartService();
+              final success = await cartService.addToCart(product);
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${product.name} added to cart!',
+                            style: GoogleFonts.poppins(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFF4CAF50),
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    action: SnackBarAction(
+                      label: 'VIEW CART',
+                      textColor: Colors.white,
+                      onPressed: () {},
+                    ),
+                  ),
+                );
+              }
+            },
+          );
         },
       ),
     );
   }
-  
-  List<Map<String, dynamic>> _getProductsForCategory() {
-    switch (_selectedCategoryIndex) {
-      case 0: // Women's
-        return [
-          {'name': 'Women\'s T-shirt', 'price': 'PHP 850.00', 'color': const Color(0xFF8B7355), 'icon': Icons.woman_rounded},
-          {'name': 'Women\'s Dress', 'price': 'PHP 1,250.00', 'color': const Color(0xFF5C9EAD), 'icon': Icons.checkroom_rounded},
-          {'name': 'Women\'s Skirt', 'price': 'PHP 750.00', 'color': const Color(0xFFE8A87C), 'icon': Icons.label_rounded},
-          {'name': 'Women\'s Shorts', 'price': 'PHP 650.00', 'color': const Color(0xFFD4A574), 'icon': Icons.crop_free_rounded},
-          {'name': 'Blouse', 'price': 'PHP 950.00', 'color': const Color(0xFFB8956A), 'icon': Icons.woman_2_rounded},
-          {'name': 'Cardigan', 'price': 'PHP 1,150.00', 'color': const Color(0xFF9B8A6C), 'icon': Icons.checkroom_outlined},
-        ];
-      case 1: // Men's
-        return [
-          {'name': 'Men\'s T-shirt', 'price': 'PHP 800.00', 'color': const Color(0xFF4A5568), 'icon': Icons.man_rounded},
-          {'name': 'Men\'s Polo', 'price': 'PHP 1,100.00', 'color': const Color(0xFF2D3748), 'icon': Icons.man_2_rounded},
-          {'name': 'Jeans', 'price': 'PHP 1,450.00', 'color': const Color(0xFF1A365D), 'icon': Icons.man_3_rounded},
-          {'name': 'Men\'s Shorts', 'price': 'PHP 720.00', 'color': const Color(0xFF2C5282), 'icon': Icons.man_4_rounded},
-          {'name': 'Hoodie', 'price': 'PHP 1,300.00', 'color': const Color(0xFF4A5568), 'icon': Icons.checkroom_rounded},
-          {'name': 'Jacket', 'price': 'PHP 1,850.00', 'color': const Color(0xFF2D3748), 'icon': Icons.work_outline_rounded},
-        ];
-      case 2: // Kid's
-        return [
-          {'name': 'Kid\'s T-shirt', 'price': 'PHP 450.00', 'color': const Color(0xFFEC407A), 'icon': Icons.child_care_rounded},
-          {'name': 'Kid\'s Dress', 'price': 'PHP 650.00', 'color': const Color(0xFFAB47BC), 'icon': Icons.child_friendly_rounded},
-          {'name': 'Kid\'s Shorts', 'price': 'PHP 350.00', 'color': const Color(0xFF42A5F5), 'icon': Icons.sports_rounded},
-          {'name': 'Kid\'s Pants', 'price': 'PHP 550.00', 'color': const Color(0xFF66BB6A), 'icon': Icons.people_rounded},
-          {'name': 'Kid\'s Jacket', 'price': 'PHP 750.00', 'color': const Color(0xFFFF7043), 'icon': Icons.family_restroom_rounded},
-          {'name': 'Kid\'s Shoes', 'price': 'PHP 850.00', 'color': const Color(0xFFFFCA28), 'icon': Icons.directions_walk_rounded},
-        ];
-      default:
-        return [];
-    }
-  }
-  
-  Widget _buildRealProductCard(Product product, double screenWidth, double screenHeight) {
-    String imageUrl = '';
-    if (product.images.isNotEmpty) {
-      imageUrl = product.images.first.url;
-    }
 
-    return GestureDetector(
-      onTap: () {
-        _showProductDetailModal(product);
-      },
+  Widget _buildPromoBanner(double screenWidth) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: 8),
       child: Container(
+        height: 110,
         decoration: BoxDecoration(
-          color: Colors.white,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFEDD7C0), Color(0xFFD4A574)],
+          ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
+              blurRadius: 10,
               offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Product image
-            Expanded(
-              child: Stack(
+            Positioned(
+              left: 18,
+              top: 18,
+              right: 18,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                      child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  color: const Color(0xFFF8F8F8),
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded /
-                                              loadingProgress.expectedTotalBytes!
-                                          : null,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          const Color(0xFFD4A574)),
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return _buildPlaceholderImage(screenWidth);
-                              },
-                            )
-                          : _buildPlaceholderImage(screenWidth),
+                  Text(
+                    'New Arrivals',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: screenWidth * 0.05,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  // Heart icon for favorites
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.favorite_border_rounded,
-                        size: 16,
-                        color: Colors.grey.withValues(alpha: 0.7),
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Discover the latest styles curated for you',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white.withOpacity(0.92),
+                      fontSize: screenWidth * 0.032,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  // Featured/Trending badges
-                  if (product.featured || product.trending)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: product.featured ? Colors.orange : Colors.red,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          product.featured ? 'Featured' : 'Trending',
-                          style: GoogleFonts.poppins(
-                            fontSize: screenWidth * 0.022,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
-            
-            // Product details
-            Container(
-              padding: EdgeInsets.all(screenWidth * 0.025),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+            Positioned(
+              bottom: 14,
+              left: 18,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Shop now',
+                  style: GoogleFonts.poppins(
+                    color: const Color(0xFFD4A574),
+                    fontWeight: FontWeight.w700,
+                    fontSize: screenWidth * 0.03,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortFilterBar(double screenWidth) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(screenWidth * 0.04, 8, screenWidth * 0.04, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const Icon(Icons.sort_rounded, size: 18, color: Color(0xFFD4A574)),
+                  const SizedBox(width: 8),
                   Text(
-                    product.name,
+                    'Sort by',
                     style: GoogleFonts.poppins(
                       fontSize: screenWidth * 0.032,
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 4),
-                  if (product.brand?.isNotEmpty == true)
-                    Text(
-                      product.brand!,
-                      style: GoogleFonts.poppins(
-                        fontSize: screenWidth * 0.025,
-                        color: Colors.grey.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'PHP ${product.price.toStringAsFixed(2)}',
-                              style: GoogleFonts.poppins(
-                                fontSize: screenWidth * 0.03,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFD4A574),
-                              ),
-                            ),
-                            if ((product.comparePrice ?? 0) > product.price)
-                              Text(
-                                'PHP ${product.comparePrice?.toStringAsFixed(2) ?? '0.00'}',
-                                style: GoogleFonts.poppins(
-                                  fontSize: screenWidth * 0.025,
-                                  decoration: TextDecoration.lineThrough,
-                                  color: Colors.grey.withValues(alpha: 0.6),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          // Quick add to cart functionality
-                          CartService().addToCart(product);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '${product.name} added to cart!',
-                                style: GoogleFonts.poppins(),
-                              ),
-                              backgroundColor: const Color(0xFFD4A574),
-                              behavior: SnackBarBehavior.floating,
-                              duration: const Duration(seconds: 2),
-                              action: SnackBarAction(
-                                label: 'VIEW CART',
-                                textColor: Colors.white,
-                                onPressed: () {
-                                  // Navigate to cart - You'll need to handle this based on your navigation
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD4A574),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.add_shopping_cart_rounded,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderImage(double screenWidth) {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFD4A574).withValues(alpha: 0.2),
-            const Color(0xFFD4A574).withValues(alpha: 0.4),
-          ],
-        ),
-      ),
-      child: Center(
-        child: Container(
-          width: screenWidth * 0.15,
-          height: screenWidth * 0.15,
-          decoration: BoxDecoration(
-            color: const Color(0xFFD4A574),
-            borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            Icons.checkroom_rounded,
-            color: Colors.white,
-            size: screenWidth * 0.08,
+          SizedBox(width: screenWidth * 0.03),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.tune_rounded, size: 18, color: Color(0xFFD4A574)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Filters',
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.032,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -749,10 +717,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   imageUrl,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return _buildPlaceholderImage(screenWidth);
+                                    return _modalImagePlaceholder(screenWidth);
                                   },
                                 )
-                              : _buildPlaceholderImage(screenWidth),
+                              : _modalImagePlaceholder(screenWidth),
                         ),
                       ),
                       
@@ -988,28 +956,64 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               width: double.infinity,
                               height: 56,
                               child: ElevatedButton(
-                                onPressed: product.stock > 0 ? () {
-                                  // Add to cart functionality
-                                  CartService().addToCart(product);
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${product.name} added to cart!',
-                                        style: GoogleFonts.poppins(),
+                                onPressed: product.stock > 0 ? () async {
+                                  final cartService = SupabaseCartService();
+                                  final success = await cartService.addToCart(product);
+                                  
+                                  if (mounted) {
+                                    Navigator.pop(context);
+                                  }
+                                  
+                                  if (success && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                            SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                '${product.name} added to cart!',
+                                                style: GoogleFonts.poppins(fontSize: 14),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: const Color(0xFF4CAF50),
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: const Duration(seconds: 2),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        action: SnackBarAction(
+                                          label: 'VIEW CART',
+                                          textColor: Colors.white,
+                                          onPressed: () {},
+                                        ),
                                       ),
-                                      backgroundColor: const Color(0xFFD4A574),
-                                      behavior: SnackBarBehavior.floating,
-                                      duration: const Duration(seconds: 2),
-                                      action: SnackBarAction(
-                                        label: 'VIEW CART',
-                                        textColor: Colors.white,
-                                        onPressed: () {
-                                          // Navigate to cart - You'll need to handle this based on your navigation
-                                        },
+                                    );
+                                  } else if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(Icons.error_outline, color: Colors.white, size: 20),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Failed to add to cart',
+                                              style: GoogleFonts.poppins(fontSize: 14),
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        duration: const Duration(seconds: 2),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  }
                                 } : null,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFD4A574),

@@ -21,7 +21,7 @@ class ProductService {
     try {
       print('🔎 Debug getProducts: category=$category, featured=$featured, trending=$trending, newArrival=$newArrival, limit=$limit');
       
-      var query = _supabase
+      var baseQuery = _supabase
           .from('products')
           .select('''
             *,
@@ -31,21 +31,18 @@ class ProductService {
       // First, let's try without the status and visibility filters to see all products
       print('🔍 Querying products table...');
       
-      // Apply the filters that might be causing issues
-      if (category != null && category.isNotEmpty) {
-        query = query.eq('category', category);
-      }
+      // Defer category filtering for two-phase strategy below
 
       if (featured == true) {
-        query = query.eq('featured', true);
+        baseQuery = baseQuery.eq('featured', true);
       }
 
       if (trending == true) {
-        query = query.eq('trending', true);
+        baseQuery = baseQuery.eq('trending', true);
       }
 
       if (newArrival == true) {
-        query = query.eq('new_arrival', true);
+        baseQuery = baseQuery.eq('new_arrival', true);
       }
       
       // Let's check what status and visibility values exist in your database
@@ -60,20 +57,48 @@ class ProductService {
       }
       
       // Apply status and visibility filters (fixed to match database values)
-      query = query.eq('status', 'active').eq('visibility', 'visible');
-
-      // Order by created_at descending
-      var orderedQuery = query.order('created_at', ascending: false);
-
-      // Apply limit and offset for pagination
-      if (offset != null) {
-        orderedQuery = orderedQuery.range(offset, (offset + (limit ?? 10)) - 1);
-      } else if (limit != null) {
-        orderedQuery = orderedQuery.limit(limit);
+      baseQuery = baseQuery.eq('status', 'active').eq('visibility', 'visible');
+      Future<List<dynamic>> _execute(dynamic q) async {
+        var ordered = q.order('created_at', ascending: false);
+        if (offset != null) {
+          ordered = ordered.range(offset, (offset + (limit ?? 10)) - 1);
+        } else if (limit != null) {
+          ordered = ordered.limit(limit);
+        }
+        return await ordered;
       }
 
-      print('🚀 Executing query...');
-      final response = await orderedQuery;
+      List<dynamic> response = [];
+
+      if (category != null && category.isNotEmpty) {
+        // Phase 1: exact equality
+        final exactQuery = baseQuery.eq('category', category);
+        response = await _execute(exactQuery);
+
+        if (response.isEmpty) {
+          // Phase 2: safe ilike patterns
+          final token = category.toLowerCase();
+          dynamic likeQuery = baseQuery;
+
+          if (token.contains('men')) {
+            // Avoid matching 'women' by excluding 'wom' in category
+            likeQuery = likeQuery
+                .or("category.ilike.men%,category.ilike.%men'%,category.ilike.%mens%,category.ilike.% male%,category.ilike.% men %,category.ilike.% men,%,category.ilike.% men/%")
+                .not('category', 'ilike', '%wom%');
+          } else if (token.contains('women') || token.contains('woman') || token.contains('lady') || token.contains('female')) {
+            likeQuery = likeQuery.or("category.ilike.women%,category.ilike.%women'%,category.ilike.%womens%,category.ilike.%woman%,category.ilike.%lady%,category.ilike.%ladies%,category.ilike.%female%");
+          } else if (token.contains('kid') || token.contains('child')) {
+            likeQuery = likeQuery.or('category.ilike.kid%,category.ilike.%kids%,category.ilike.%child%,category.ilike.%children%');
+          } else {
+            likeQuery = likeQuery.ilike('category', '%${category.replaceAll("'", '')}%');
+          }
+
+          response = await _execute(likeQuery);
+        }
+      } else {
+        // No category: just run base
+        response = await _execute(baseQuery);
+      }
       print('📦 Raw response: $response');
       print('📊 Response length: ${response.length}');
       

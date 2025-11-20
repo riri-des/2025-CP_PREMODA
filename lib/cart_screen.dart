@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'screens/virtual_tryon_camera.dart';
+import 'screens/checkout_screen.dart';
 import 'services/virtual_tryon_service.dart';
-import 'services/cart_service.dart';
+import 'services/supabase_cart_service.dart';
 import 'dart:io';
 import 'home_screen.dart';
 
@@ -15,13 +16,14 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final CartService _cartService = CartService();
-  String _selectedAIModel = 'segmind'; // 'rapidapi' or 'segmind'
+  final SupabaseCartService _cartService = SupabaseCartService();
+  String _selectedAIModel = 'segmind';
   
   @override
   void initState() {
     super.initState();
     _cartService.addListener(_onCartChanged);
+    _loadCart();
   }
   
   @override
@@ -34,6 +36,10 @@ class _CartScreenState extends State<CartScreen> {
     if (mounted) {
       setState(() {});
     }
+  }
+  
+  Future<void> _loadCart() async {
+    await _cartService.loadCart();
   }
 
   @override
@@ -242,9 +248,7 @@ class _CartScreenState extends State<CartScreen> {
             // Checkbox
             GestureDetector(
               onTap: () {
-                setState(() {
-                  item.isSelected = !item.isSelected;
-                });
+                _cartService.toggleItemSelection(item.id);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -360,11 +364,9 @@ class _CartScreenState extends State<CartScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             GestureDetector(
-                              onTap: () {
+                              onTap: () async {
                                 if (item.quantity > 1) {
-                                  setState(() {
-                                    item.quantity--;
-                                  });
+                                  await _cartService.updateQuantity(item.id, item.quantity - 1);
                                 }
                               },
                               child: Container(
@@ -407,10 +409,8 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                             
                             GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  item.quantity++;
-                                });
+                              onTap: () async {
+                                await _cartService.updateQuantity(item.id, item.quantity + 1);
                               },
                               child: Container(
                                 width: 18,
@@ -709,9 +709,11 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                _cartService.clearCart();
-                Navigator.of(context).pop();
+              onPressed: () async {
+                await _cartService.clearCart();
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -734,69 +736,20 @@ class _CartScreenState extends State<CartScreen> {
   }
   
   void _showCheckoutDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Proceed to Checkout',
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          content: Text(
-            'Total: PHP ${_cartService.totalPrice.toStringAsFixed(2)}\n\nProceed with your order?',
-            style: GoogleFonts.poppins(),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey.withValues(alpha: 0.7),
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Order placed successfully!',
-                      style: GoogleFonts.poppins(),
-                    ),
-                    backgroundColor: const Color(0xFF4CAF50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4A574),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Confirm',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    // Check if any items are selected, if not select all
+    final selectedItems = _cartService.cartItems.where((item) => item.isSelected).toList();
+    
+    if (selectedItems.isEmpty) {
+      // Auto-select all items
+      _cartService.selectAllItems();
+    }
+    
+    // Navigate to checkout screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CheckoutScreen(),
+      ),
     );
   }
   

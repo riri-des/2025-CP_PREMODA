@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'services/profile_service.dart';
+import 'screens/orders_list_screen.dart';
+import 'screens/addresses_list_screen.dart';
+import 'screens/edit_profile_screen.dart';
+import 'screens/privacy_settings_screen.dart';
+import 'screens/terms_and_conditions_screen.dart';
+import 'debug/quick_auth_test.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -9,59 +18,204 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Sample user data
-  final Map<String, dynamic> userData = {
-    'name': 'Ria Jesnel Dagalea',
-    'email': 'riajesneldagalea@gmail.com',
-    'id': '202202914202S',
-    'joinDate': 'April 27, 2025',
-    'profilePicture': 'R',
-    'orders': 12,
-    'wishlist': 34,
-    'reviews': 8,
-  };
+  final ProfileService _profileService = ProfileService();
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _logout() async {
+    // Show loading toast
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Text('Logging out...', style: GoogleFonts.poppins()),
+          ],
+        ),
+        backgroundColor: const Color(0xFFD4A574),
+      ),
+    );
+
+    // Call service
+    await _profileService.signOut();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Logged out successfully!', style: GoogleFonts.poppins()),
+        backgroundColor: const Color(0xFF4CAF50),
+      ),
+    );
+
+    // Redirect to login screen using named routes
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+  
+  Future<void> _loadUserProfile() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final profile = await _profileService.getUserProfile();
+      if (profile != null) {
+        setState(() {
+          userData = profile;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'No user logged in. Please sign in to view your profile.';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error loading profile: ${e.toString()}';
+        isLoading = false;
+      });
+    }
+  }
+
+  String _getInitials(String? name) {
+    if (name == null || name.isEmpty) return '?';
+    final parts = name.split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'N/A';
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('MMMM dd, yyyy').format(date);
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  String _getMembershipDisplay(String? status) {
+    if (status == null) return 'Standard Member';
+    switch (status.toLowerCase()) {
+      case 'premium':
+        return 'Premium Member';
+      case 'vip':
+        return 'VIP Member';
+      default:
+        return 'Standard Member';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(screenWidth, screenHeight),
-            
-            // Profile Content
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  children: [
-                    // Profile Info Card
-                    _buildProfileInfoCard(screenWidth, screenHeight),
-                    
-                    // Quick Stats
-                    _buildQuickStats(screenWidth, screenHeight),
-                    
-                    // Menu Options
-                    _buildMenuOptions(screenWidth, screenHeight),
-                    
-                    // Account Settings
-                    _buildAccountSettings(screenWidth, screenHeight),
-                    
-                    // Logout Button
-                    _buildLogoutButton(screenWidth, screenHeight),
-                    
-                    // Bottom padding
-                    SizedBox(height: screenHeight * 0.02),
-                  ],
-                ),
+    return WillPopScope(
+      onWillPop: () async {
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8F8F8),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              _buildHeader(screenWidth, screenHeight),
+              
+              // Profile Content
+              Expanded(
+                child: isLoading
+                    ? Center(
+                      child: CircularProgressIndicator(
+                        color: const Color(0xFFD4A574),
+                      ),
+                    )
+                    : errorMessage != null
+                        ? Center(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                // Auth Status Widget
+                                const QuickAuthTest(),
+                                const SizedBox(height: 24),
+                                Icon(
+                                  Icons.error_outline,
+                                  size: 64,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  errorMessage!,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _loadUserProfile,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFD4A574),
+                                  ),
+                                  child: Text(
+                                    'Retry',
+                                    style: GoogleFonts.poppins(),
+                                  ),
+                                ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _loadUserProfile,
+                            color: const Color(0xFFD4A574),
+                            child: SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: Column(
+                                children: [
+                                // Profile Info Card
+                                _buildProfileInfoCard(screenWidth, screenHeight),
+                                
+                                // Quick Stats
+                                _buildQuickStats(screenWidth, screenHeight),
+                                
+                                // Menu Options
+                                _buildMenuOptions(screenWidth, screenHeight),
+                                
+                                // Account Settings
+                                _buildAccountSettings(screenWidth, screenHeight),
+                                
+                                // Logout Button
+                                _buildLogoutButton(screenWidth, screenHeight),
+                                
+                                // Bottom padding
+                                SizedBox(height: screenHeight * 0.02),
+                                ],
+                              ),
+                            ),
+                          ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -184,16 +338,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Text(
-                    userData['profilePicture'],
-                    style: GoogleFonts.poppins(
-                      fontSize: screenWidth * 0.08,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
+                child: userData?['profile_picture_url'] != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.11),
+                        child: Image.network(
+                          userData!['profile_picture_url'],
+                          width: screenWidth * 0.22,
+                          height: screenWidth * 0.22,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Center(
+                              child: Text(
+                                _getInitials(userData?['name']),
+                                style: GoogleFonts.poppins(
+                                  fontSize: screenWidth * 0.08,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          _getInitials(userData?['name']),
+                          style: GoogleFonts.poppins(
+                            fontSize: screenWidth * 0.08,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
               ),
               Positioned(
                 bottom: 0,
@@ -230,7 +406,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           
           // Name and email
           Text(
-            userData['name'],
+            userData?['full_name'] ?? userData?['name'] ?? 'User',
             style: GoogleFonts.poppins(
               fontSize: screenWidth * 0.045,
               fontWeight: FontWeight.w700,
@@ -242,7 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SizedBox(height: 4),
           
           Text(
-            userData['email'],
+            userData?['email'] ?? '',
             style: GoogleFonts.poppins(
               fontSize: screenWidth * 0.032,
               fontWeight: FontWeight.w400,
@@ -262,11 +438,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Column(
               children: [
-                _buildDetailRow('User ID:', userData['id'], Icons.badge_rounded),
+                _buildDetailRow('User ID:', userData?['id']?.toString().substring(0, 13) ?? 'N/A', Icons.badge_rounded),
                 SizedBox(height: 8),
-                _buildDetailRow('Joined:', userData['joinDate'], Icons.calendar_today_rounded),
+                _buildDetailRow('Joined:', _formatDate(userData?['created_at']), Icons.calendar_today_rounded),
                 SizedBox(height: 8),
-                _buildDetailRow('Status:', 'Premium Member', Icons.star_rounded, isSpecial: true),
+                _buildDetailRow('Status:', _getMembershipDisplay(userData?['membership_status']), Icons.star_rounded, isSpecial: true),
               ],
             ),
           ),
@@ -315,7 +491,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(
             child: _buildStatCard(
               'Orders',
-              userData['orders'].toString(),
+              userData?['total_orders']?.toString() ?? '0',
               Icons.shopping_bag_outlined,
               const Color(0xFFD4A574),
               screenWidth,
@@ -325,7 +501,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(
             child: _buildStatCard(
               'Wishlist',
-              userData['wishlist'].toString(),
+              userData?['wishlist_count']?.toString() ?? '0',
               Icons.favorite_border,
               const Color(0xFFD4A574),
               screenWidth,
@@ -335,7 +511,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(
             child: _buildStatCard(
               'Reviews',
-              userData['reviews'].toString(),
+              userData?['review_count']?.toString() ?? '0',
               Icons.rate_review_outlined,
               const Color(0xFFD4A574),
               screenWidth,
@@ -570,17 +746,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
   
   void _handleMenuTap(String title) {
-    // Handle menu item taps
+    if (title == 'Order History') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const OrdersListScreen()),
+      );
+      return;
+    }
+    if (title == 'My Addresses') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AddressesListScreen()),
+      );
+      return;
+    }
+    if (title == 'Edit Profile') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+      ).then((saved) {
+        if (saved == true) {
+          _loadUserProfile();
+        }
+      });
+      return;
+    }
+    if (title == 'Privacy Settings') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const PrivacySettingsScreen()),
+      );
+      return;
+    }
+    if (title == 'Terms & Conditions' || title == 'Terms and Conditions') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TermsAndConditionsScreen()),
+      );
+      return;
+    }
+    // Default feedback for other items (placeholder)
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          '$title feature coming soon!',
-          style: GoogleFonts.poppins(),
-        ),
+        content: Text('$title feature coming soon!', style: GoogleFonts.poppins()),
         backgroundColor: const Color(0xFFD4A574),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -720,38 +925,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               child: Text(
                 'Cancel',
-                style: GoogleFonts.poppins(
-                  color: Colors.grey,
-                ),
+                style: GoogleFonts.poppins(color: Colors.grey),
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                // Handle logout - navigate back to login screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Logged out successfully!',
-                      style: GoogleFonts.poppins(),
-                    ),
-                    backgroundColor: const Color(0xFF4CAF50),
-                  ),
-                );
+                await _logout();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF44336),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text(
-                'Log Out',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text('Log Out', style: GoogleFonts.poppins()),
             ),
           ],
         );

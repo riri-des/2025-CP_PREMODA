@@ -38,9 +38,33 @@ class PremodaApp extends StatelessWidget {
         fontFamily: GoogleFonts.poppins().fontFamily,
         useMaterial3: true,
       ),
-      home: const WelcomeScreen(),
+      home: const RootRouter(),
+      routes: {
+        '/login': (context) => const LogInScreen(),
+        '/welcome': (context) => const WelcomeScreen(),
+      },
       debugShowCheckedModeBanner: false,
     );
+  }
+}
+
+class RootRouter extends StatelessWidget {
+  const RootRouter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    try {
+      if (!SupabaseConfig.isConfigured) {
+        return const WelcomeScreen();
+      }
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        return const HomeScreen();
+      }
+      return const WelcomeScreen();
+    } catch (_) {
+      return const WelcomeScreen();
+    }
   }
 }
 
@@ -123,7 +147,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      final result = await AuthService.signUpWithEmailJS(
+      final result = await AuthService.signUpWithEmail(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,

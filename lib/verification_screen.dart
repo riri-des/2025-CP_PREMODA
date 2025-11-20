@@ -87,7 +87,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     });
 
     try {
-      final result = await AuthService.verifyEmailJS(
+      final result = await AuthService.verifyEmail(
         email: widget.email,
         token: _otpCode,
         name: widget.name,
@@ -149,7 +149,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     });
 
     try {
-      final result = await AuthService.resendVerificationEmailJS(widget.email);
+      final result = await AuthService.resendVerification(widget.email);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
