@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/profile_service.dart';
 
 class TermsAndConditionsScreen extends StatefulWidget {
-  final bool requireAcceptance; // set true if opened during onboarding/checkout
+  final bool requireAcceptance; // Kapoy na ako
   const TermsAndConditionsScreen({super.key, this.requireAcceptance = false});
 
   @override
