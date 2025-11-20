@@ -8,8 +8,7 @@ import '../services/supabase_cart_service.dart';
 
 class VirtualTryOnCamera extends StatefulWidget {
   final List<CartItem> selectedItems;
-  final bool useRapidAPI; // true => RapidAPI, false => Segmind
-  
+  final bool useRapidAPI; 
   const VirtualTryOnCamera({
     super.key,
     required this.selectedItems,
