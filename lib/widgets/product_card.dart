@@ -195,12 +195,13 @@ class ProductCard extends StatelessWidget {
             ),
             
             Expanded(
-              flex: 1,
+              flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       product.name,
@@ -212,8 +213,10 @@ class ProductCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,14 +244,14 @@ class ProductCard extends StatelessWidget {
                         GestureDetector(
                           onTap: product.isInStock ? onAddToCart : null,
                           child: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
                               color: product.isInStock ? const Color(0xFFD4A574) : Colors.grey,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Icon(
-                              Icons.add_rounded,
-                              size: 14,
+                              Icons.add_shopping_cart_rounded,
+                              size: 16,
                               color: Colors.white,
                             ),
                           ),

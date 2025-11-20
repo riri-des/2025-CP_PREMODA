@@ -2,93 +2,94 @@
 
 This file provides guidance to WARP (warp.dev) when working with code in this repository.
 
-Project: PREMODA (Flutter)
+Project summary
+- Flutter mobile app for AI-powered virtual try-on and e-commerce.
+- Frontend: Flutter (Dart), Material 3, Google Fonts, camera and media plugins.
+- Backend: Supabase (auth, DB, storage), external AI try-on (Segmind IDM VTON or Try-On Diffusion via RapidAPI), payments via PayMongo.
 
-Summary
-- Mobile Flutter app for AI-powered virtual try-on in e-commerce.
-- Integrates camera capture, Segmind IDM VTON, optional Try-On Diffusion via RapidAPI, and Supabase for auth/data.
-
-Core commands
+Common commands
 - Install deps
-  - flutter pub get
-- Analyze (lint)
-  - flutter analyze
-- Format (consistent code style)
-  - flutter format lib test
-- Run app (attach an emulator/device first)
-  - flutter run
-  - List devices: flutter devices
-  - Run on a specific device: flutter run -d <device_id>
+```bash path=null start=null
+flutter pub get
+```
+- Run app (pick device with flutter devices)
+```bash path=null start=null
+flutter run
+```
+- Run on web (if enabled)
+```bash path=null start=null
+flutter run -d chrome
+```
+- Build Android APK / App Bundle / Web
+```bash path=null start=null
+flutter build apk --release
+flutter build appbundle --release
+flutter build web --release
+```
+- Lint / static analysis and quick fixes
+```bash path=null start=null
+flutter analyze
+dart fix --apply
+```
+- Format code
+```bash path=null start=null
+dart format .
+```
 - Tests
-  - Run all: flutter test
-  - Run one file: flutter test test/widget_test.dart
-  - Run a single test (by name pattern): flutter test test/widget_test.dart -n "Premoda app smoke test"
-- Build
-  - Android (debug): flutter build apk --debug
-  - Android (release): flutter build apk --release
-  - iOS (on macOS): flutter build ios
-- Update native splash (configured in pubspec.yaml via flutter_native_splash)
-  - dart run flutter_native_splash:create
+```bash path=null start=null
+# Run all tests
+flutter test
 
-Environment and configuration
+# Run single file
+flutter test test/widget_test.dart
+
+# Run single test by name (pattern)
+flutter test -t "partial test name"
+
+# With coverage (optional)
+flutter test --coverage
+```
+- Asset tooling configured in pubspec
+```bash path=null start=null
+# Native splash
+flutter pub run flutter_native_splash:create
+# Launcher icons (Android)
+flutter pub run flutter_launcher_icons
+```
+
+Big-picture architecture
+- Entry and routing
+  - lib/main.dart bootstraps Flutter, optionally initializes Supabase via lib/services/supabase_config.dart, and defines routes/home (WelcomeScreen, LogInScreen, HomeScreen).
+- Screen layer (feature-first)
+  - Core flows live in lib/ and lib/screens/: onboarding (welcome/login/signup/verification), catalog and categories, cart/checkout, profile, orders, addresses, legal (privacy/terms), and the virtual try-on camera.
+- Service layer (logic + I/O)
+  - Supabase integration: auth_service.dart (signup/login, OTP verification, profile sync), product_service.dart (product queries/filters, images), address_service.dart, order_service.dart, supabase_cart_service.dart (cart and atomic order creation), profile_service.dart (aggregated profile/stats), emailjs_service.dart (custom OTP email flow), supabase_config.dart (URL/key + readiness check).
+  - Payments: paymongo_service.dart (sources, payment intents, payment methods, attach, status helpers; amounts in centavos).
+  - AI Try-On: virtual_tryon_service.dart orchestrates sequential item try-on; two backends:
+    - Try-On Diffusion via RapidAPI: multipart upload of avatar and clothing image, returns composed PNG to a temp file.
+    - Segmind IDM VTON: base64 payload of human and garment; maps local categories to Segmind categories; writes result to a temp file.
+- Data models and UI components
+  - lib/models/: product_model.dart, user_model.dart; widgets in lib/widgets/ (product card, collection slider), utilities in lib/utils/.
+- Debug helpers
+  - lib/debug/ contains quick auth/debug screens for local testing.
+
+Configuration touchpoints (before running features)
 - Supabase
-  - Copy lib/services/supabase_config.dart.template to lib/services/supabase_config.dart and fill supabaseUrl and supabaseAnonKey.
-  - main.dart conditionally initializes Supabase via SupabaseConfig.isConfigured; ensure your concrete lib/services/supabase_config.dart provides the properties referenced by main.dart.
-- EmailJS
-  - Copy lib/services/emailjs_config.dart.template to lib/services/emailjs_config.dart and fill serviceId, templateId, publicKey (and privateKey if used).
-- Assets
-  - pubspec.yaml includes assets/images/. Ensure images exist, especially for splash and UI assets referenced in the code.
+  - Update credentials in lib/services/supabase_config.dart or copy from lib/services/supabase_config.dart.template and import the real file. Main initializes Supabase only when SupabaseConfig.isConfigured is true.
+- EmailJS (custom OTP email flow)
+  - Configure lib/services/emailjs_config.dart (template provided) used by emailjs_service.dart and auth_service.dart for verification code delivery.
+- PayMongo (payments)
+  - Replace test keys in lib/services/paymongo_service.dart with your own (test/live). See PAYMONGO_INTEGRATION.md for flow details and testing notes.
+- Virtual Try-On APIs
+  - lib/services/virtual_tryon_service.dart contains API keys and endpoints for Segmind and RapidAPI. The processVirtualTryOn() method can switch between backends via useRapidAPI and requires a model image and selected cart items; outputs a temp image path for display.
+- Assets and permissions
+  - pubspec.yaml declares assets/images/ and Material icons. Android/iOS/web splash and icons are configured via flutter_native_splash and flutter_launcher_icons. Camera, storage, and URL launcher permissions are required per plugin docs.
 
-High-level architecture
-- Entry point: lib/main.dart
-  - Initializes Flutter bindings.
-  - Conditionally initializes Supabase (Supabase.initialize) based on SupabaseConfig.
-  - PremodaApp sets MaterialApp theme (Google Fonts, Material 3) and launches the initial screen (Welcome -> SignUp/LogIn flows) leading to HomeScreen.
+Testing notes
+- Tests currently include test/widget_test.dart; extend with widget/integration tests as needed. Use -t to filter individual tests.
 
-- Screens (UI)
-  - HomeScreen (lib/home_screen.dart): main navigation via PageView and bottom nav; composes sections like categories, featured, and uses widgets/product_card.dart and widgets/new_collection_grid_slider.dart.
-  - VirtualTryOnCamera (lib/screens/virtual_tryon_camera.dart):
-    - Requests camera permission (permission_handler) and initializes the preferred (front) camera (camera plugin).
-    - Captures an image and invokes VirtualTryOnService.processVirtualTryOn.
-    - Shows a result dialog with the generated image saved to a temporary file.
-  - VerificationScreen (lib/verification_screen.dart): OTP-style verification inputs and actions to verify/resend codes via AuthService.
-  - Additional screens referenced: cart_screen.dart, category_screen.dart, profile_screen.dart, verification_screen.dart (compose the app shell and flows).
-
-- Services (application logic)
-  - AuthService (lib/services/auth_service.dart)
-    - Wraps Supabase auth flows: sign-up with OTP, sign-in, profile updates, password change/reset.
-    - Provides helpers for email/password validation and user/session accessors.
-  - ProductService (lib/services/product_service.dart)
-    - Reads from Supabase tables (products, product_images) with filters (category, featured, trending, newArrival, status=active, visibility=visible) and ordering/pagination.
-    - Exposes queries for featured/trending/new arrivals, search, categories, recommendations, and a stored procedure call (increment_product_views).
-  - CartService (lib/services/cart_service.dart)
-    - Local in-memory cart with add/update/remove/select operations and totals.
-    - CartItem model holds selection (size/color), quantity, and selection state used by virtual try-on.
-  - VirtualTryOnService (lib/services/virtual_tryon_service.dart)
-    - Orchestrates try-on processing per selected cart item, sequentially mutating the working image.
-    - Two backends:
-      - Segmind IDM VTON (https://api.segmind.com/v1/idm-vton): JSON POST sending base64 of human and garment images; response bytes saved to a temp file.
-      - Try-On Diffusion via RapidAPI (https://try-on-diffusion.p.rapidapi.com/try-on-file): multipart POST with model image file + clothing image URL; response bytes saved to a temp file.
-    - Helpers convert local images to base64 and download clothing images by URL.
-    - Controlled by useRapidAPI flag; defaults to RapidAPI path when a model image path is provided.
-
-- Data models
-  - Product and ProductImage (lib/models/product_model.dart)
-    - Rich product attributes (status, visibility, flags like featured/trending/newArrival, arrays for colors/sizes/tags).
-    - ProductImage includes isPrimary and sortOrder.
-
-- Utilities
-  - SampleClothesGenerator (lib/utils/create_sample_clothes.dart)
-    - Programmatically renders simple clothing PNGs (dress/t-shirt) to the app documents directory (useful for demos/tests).
-
-Tooling and linting
-- analysis_options.yaml includes flutter_lints (5.x). Use flutter analyze to surface issues.
-
-Testing
-- Widget tests exist under test/, e.g., test/widget_test.dart covers title visibility and basic navigation from the welcome screen.
-- Run a single widget test: flutter test test/widget_test.dart -n "Navigate to Sign Up screen test"
-
-Notes derived from README.md
-- Flutter 3.35.2 (Dart 3.9.0) targeted; camera + permissions required for try-on.
-- Supabase is the primary backend for auth/database; Segmind IDM VTON is used for core try-on; EmailJS for verification flow.
-- Basic quickstart is: flutter pub get, configure templates, flutter run.
+Key internal docs
+- README.md: project overview, stack, quick start.
+- PAYMONGO_INTEGRATION.md: setup, flows (GCash, bank transfer), troubleshooting, future enhancements.
+- PROFILE_SETUP_README.md: Supabase schema and policies for profiles/addresses/orders/wishlists/reviews, Flutter integration patterns.
+- supabase_schema.sql: schema reference for backend tables and relations.

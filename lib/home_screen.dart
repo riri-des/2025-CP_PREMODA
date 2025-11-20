@@ -5,7 +5,7 @@ import 'cart_screen.dart';
 import 'profile_screen.dart';
 import 'models/product_model.dart';
 import 'services/product_service.dart';
-import 'services/cart_service.dart';
+import 'services/supabase_cart_service.dart';
 import 'widgets/product_card.dart';
 import 'widgets/new_collection_grid_slider.dart';
 
@@ -43,59 +43,104 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   
   @override
   void dispose() {
-    _pageController.dispose();
     _heroSliderController.dispose();
     _heroPageController.dispose();
     super.dispose();
   }
   
-  // Helper method to add product to cart
-  void _addToCart(Product product) {
+  Future<void> _addToCart(Product product) async {
     try {
-      // For now, just show a snackbar. In a full implementation, 
-      // you would add the product to a cart state management system
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${product.name} added to cart!',
-            style: GoogleFonts.poppins(),
+      final cartService = SupabaseCartService();
+      
+      final success = await cartService.addToCart(product);
+      
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${product.name} added to cart!',
+                    style: GoogleFonts.poppins(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF4CAF50),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            action: SnackBarAction(
+              label: 'VIEW CART',
+              textColor: Colors.white,
+              onPressed: () {
+                setState(() {
+                  _currentIndex = 2;
+                });
+                _pageController.animateToPage(
+                  2,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                );
+              },
+            ),
           ),
-          backgroundColor: const Color(0xFF4CAF50),
-          duration: const Duration(seconds: 2),
-          action: SnackBarAction(
-            label: 'VIEW CART',
-            textColor: Colors.white,
-            onPressed: () {
-              setState(() {
-                _currentIndex = 2; // Navigate to cart
-              });
-              _pageController.animateToPage(
-                2,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              );
-            },
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Failed to add to cart',
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to add to cart',
-            style: GoogleFonts.poppins(),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Error: ${e.toString()}',
+                  style: GoogleFonts.poppins(fontSize: 14),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          backgroundColor: Colors.red,
-        ),
-      );
+        );
+      }
     }
   }
   
-  // Helper method to toggle favorite status
   void _toggleFavorite(Product product) {
     try {
-      // For now, just show a snackbar. In a full implementation,
-      // you would implement favorites functionality with state management
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -124,56 +169,72 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
     
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) {
+    return WillPopScope(
+      onWillPop: () async {
+        if (_currentIndex != 0) {
           setState(() {
-            _currentIndex = index;
+            _currentIndex = 0;
           });
-        },
-        children: [
-          // Home Page
-          SafeArea(
-            child: Column(
-              children: [
-                // Header with PREMODA title and search
-                _buildHeader(screenWidth, screenHeight),
-                // Main content with scroll
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        // Categories section
-                        _buildCategoriesSection(screenWidth, screenHeight),
-                        
-                        // Big Sale banner
-                        _buildBigSaleBanner(screenWidth, screenHeight),
-                        
-                        // Featured section
-                        _buildFeaturedSection(screenWidth, screenHeight),
-                        
-                        // Bottom padding to prevent overlap with bottom nav
-                        SizedBox(height: 20),
-                      ],
+          _pageController.animateToPage(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFAFAFA),
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          children: [
+            // Home Page
+            SafeArea(
+              child: Column(
+                children: [
+                  // Header with PREMODA title and search
+                  _buildHeader(screenWidth, screenHeight),
+                  // Main content with scroll
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        children: [
+                          // Categories section
+                          _buildCategoriesSection(screenWidth, screenHeight),
+                          
+                          // Big Sale banner
+                          _buildBigSaleBanner(screenWidth, screenHeight),
+                          
+                          // Featured section
+                          _buildFeaturedSection(screenWidth, screenHeight),
+                          
+                          // Bottom padding to prevent overlap with bottom nav
+                          SizedBox(height: 20),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          // Category Page
-          const CategoryScreen(),
-          // Cart Page
-          const CartScreen(),
-          // Profile Page
-          const ProfileScreen(),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: _buildBottomNavigationBar(screenWidth),
+            // Category Page
+            const CategoryScreen(),
+            // Cart Page
+            const CartScreen(),
+            // Profile Page
+            const ProfileScreen(),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: _buildBottomNavigationBar(screenWidth),
+        ),
       ),
     );
   }
@@ -181,7 +242,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildHeader(double screenWidth, double screenHeight) {
     return Container(
       padding: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04),
-      color: const Color(0xFFF8F8F8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFFFAFAFA),
+            const Color(0xFFFAFAFA).withOpacity(0.95),
+          ],
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -193,19 +263,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hello',
+                    'Hello 👋',
                     style: GoogleFonts.poppins(
                       fontSize: screenWidth * 0.035,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w500,
                       color: Colors.grey[600],
+                      letterSpacing: 0.3,
                     ),
                   ),
-                  Text(
-                    'Welcome',
-                    style: GoogleFonts.poppins(
-                      fontSize: screenWidth * 0.055,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [
+                        const Color(0xFFD4A574),
+                        const Color(0xFFB8956A),
+                      ],
+                    ).createShader(bounds),
+                    child: Text(
+                      'Welcome Back',
+                      style: GoogleFonts.poppins(
+                        fontSize: screenWidth * 0.055,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                 ],
@@ -226,29 +306,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white,
+                            Colors.grey.shade50,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: const Color(0xFFD4A574).withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                            spreadRadius: 0,
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Icon(
-                        Icons.shopping_cart_outlined,
-                        color: Colors.black87,
+                        Icons.shopping_bag_outlined,
+                        color: const Color(0xFFD4A574),
                         size: 24,
                       ),
                     ),
                     // Cart badge
                     ListenableBuilder(
-                      listenable: CartService(),
+                      listenable: SupabaseCartService(),
                       builder: (context, child) {
-                        final cartService = CartService();
+                        final cartService = SupabaseCartService();
                         if (cartService.itemCount == 0) {
                           return const SizedBox.shrink();
                         }
@@ -294,17 +387,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           
           // Search bar with voice and profile icons
           Container(
-            height: 50,
+            height: 52,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Colors.grey.shade50,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: const Color(0xFFD4A574).withOpacity(0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 4),
+                  spreadRadius: 0,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
+              border: Border.all(
+                color: Colors.grey.shade200,
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
@@ -358,8 +468,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFFD4A574),
+                          const Color(0xFFB8956A),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFD4A574).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
                     child: Icon(
                       Icons.person_outline,
@@ -1440,13 +1564,34 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Categories',
-                style: GoogleFonts.poppins(
-                  fontSize: screenWidth * 0.045,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFFD4A574),
+                          const Color(0xFFB8956A),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Categories',
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.048,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black87,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
               GestureDetector(
                 onTap: () {
@@ -1459,23 +1604,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     curve: Curves.easeInOut,
                   );
                 },
-                child: Row(
-                  children: [
-                    Text(
-                      'View All',
-                      style: GoogleFonts.poppins(
-                        fontSize: screenWidth * 0.032,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFFD4A574),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFD4A574).withOpacity(0.1),
+                        const Color(0xFFB8956A).withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFD4A574).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'View All',
+                        style: GoogleFonts.poppins(
+                          fontSize: screenWidth * 0.032,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFD4A574),
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: const Color(0xFFD4A574),
-                      size: 16,
-                    ),
-                  ],
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: const Color(0xFFD4A574),
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1549,20 +1710,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildBigSaleBanner(double screenWidth, double screenHeight) {
     return Container(
-      height: screenHeight * 0.22,
+      height: screenHeight * 0.24,
       margin: EdgeInsets.fromLTRB(screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.04, screenWidth * 0.02),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFD4A574).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: const Color(0xFFD4A574).withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 2,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Stack(
           children: [
             Container(
@@ -1572,8 +1739,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   end: Alignment.bottomRight,
                   colors: [
                     const Color(0xFFD4A574),
+                    const Color(0xFFC49A6C),
                     const Color(0xFFB8956A),
                   ],
+                  stops: [0.0, 0.5, 1.0],
                 ),
               ),
             ),
@@ -1686,33 +1855,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Featured',
-                style: GoogleFonts.poppins(
-                  fontSize: screenWidth * 0.045,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFFD4A574),
+                          const Color(0xFFB8956A),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Featured',
+                    style: GoogleFonts.poppins(
+                      fontSize: screenWidth * 0.048,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black87,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
               GestureDetector(
                 onTap: () {},
-                child: Row(
-                  children: [
-                    Text(
-                      'View All',
-                      style: GoogleFonts.poppins(
-                        fontSize: screenWidth * 0.032,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFFD4A574),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFD4A574).withOpacity(0.1),
+                        const Color(0xFFB8956A).withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFD4A574).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'View All',
+                        style: GoogleFonts.poppins(
+                          fontSize: screenWidth * 0.032,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFD4A574),
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: const Color(0xFFD4A574),
-                      size: 16,
-                    ),
-                  ],
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: const Color(0xFFD4A574),
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1869,9 +2075,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
                 if (isCartIcon)
                   ListenableBuilder(
-                    listenable: CartService(),
+                    listenable: SupabaseCartService(),
                     builder: (context, child) {
-                      final cartService = CartService();
+                      final cartService = SupabaseCartService();
                       if (cartService.itemCount == 0) {
                         return const SizedBox.shrink();
                       }
